@@ -1,0 +1,65 @@
+# Trellio - Async Trello API Client for Python
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+
+**Trellio** is a modern, asynchronous Python wrapper for the Trello API, built on top of `httpx`. It is designed to be lightweight, efficient, and easy to use in modern `asyncio` applications.
+
+## 🚀 Philosophy: BDD & Single Source of Truth
+
+This project follows a strict **Behavior-Driven Development (BDD)** approach where the Gherkin feature files are the absolute **Single Source of Truth**.
+
+### What does this mean?
+
+*   **Specification First:** All functionality is defined in `.feature` files (using Gherkin syntax) *before* any code is written.
+*   **Living Documentation:** The feature files serve as both the requirement specification and the documentation of the library's behavior.
+*   **Disposability & Regenerability:** The project structure and code are designed such that **implementation code (source) and test steps are considered derivative artifacts**. Theoretically, if you were to delete all Python source code and step definitions, they could be re-implemented solely based on the detailed specifications provided in the feature files.
+*   **Validation:** The `behave` test suite ensures that the implementation strictly adheres to the behavior defined in the feature files.
+
+## 📦 Features (Planned)
+
+*   **Fully Asynchronous:** Built with `httpx` for non-blocking I/O.
+*   **Type Hinted:** Comprehensive type hints for better developer experience and IDE support.
+*   **OAuth 1.0a Support:** Correctly handles Trello's authentication mechanism asynchronously.
+*   **Domain Objects:** Provides Pythonic objects (`Board`, `List`, `Card`, etc.) instead of raw dictionaries.
+*   **Pydantic Models:** Uses Pydantic for robust data validation and serialization.
+
+## 🛠️ Development Setup
+
+### Prerequisites
+
+*   Python 3.9+
+*   `uv` (recommended) or `pip`
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/yourusername/trellio.git
+    cd trellio
+    ```
+
+2.  **Set up the environment:**
+    ```bash
+    # Create virtual environment
+    python3 -m venv .venv
+    source .venv/bin/activate
+
+    # Install dependencies
+    pip install -r requirements.txt
+    pip install -r requirements-dev.txt
+    ```
+
+### Running Tests
+
+To execute the BDD test suite:
+
+```bash
+behave
+```
+
+This will parse the feature files in the `features/` directory and run the corresponding steps.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
