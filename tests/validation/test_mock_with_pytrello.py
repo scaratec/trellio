@@ -4,7 +4,7 @@ import time
 import json
 import urllib.parse
 from trello import TrelloClient
-from features.environment import ReusableTCPServer, TrelloMockHandler, PORT, mock_data
+from tests.mock_server import ReusableTCPServer, TrelloMockHandler, PORT, mock_data
 
 """
 This module contains validation tests for the custom Trello Mock Server.
