@@ -6,8 +6,21 @@ import urllib.parse
 from trello import TrelloClient
 from features.environment import ReusableTCPServer, TrelloMockHandler, PORT, mock_data
 
+"""
+This module contains validation tests for the custom Trello Mock Server.
+It uses the established 'py-trello' library as a reference client to ensure
+that our mock server behaves correctly (i.e., like the real Trello API).
+
+If these tests pass, we can be confident that our mock server is a valid
+target for developing the 'trellio' library.
+"""
+
 @pytest.fixture(scope="module", autouse=True)
 def mock_server():
+    """
+    Starts the mock server in a separate thread for the duration of the test module.
+    Resets mock data before starting.
+    """
     mock_data.reset()
     server = ReusableTCPServer(("127.0.0.1", PORT), TrelloMockHandler)
     thread = threading.Thread(target=server.serve_forever)
@@ -28,6 +41,10 @@ def mock_server():
     server.server_close()
 
 def test_pytrello_authentication(monkeypatch):
+    """
+    Verifies that py-trello can authenticate against our mock server and retrieve member info.
+    Includes monkeypatching to redirect py-trello requests to localhost.
+    """
     # py-trello uses the API Key and Token
     client = TrelloClient(
         api_key='valid_api_key',
@@ -76,6 +93,9 @@ def test_pytrello_authentication(monkeypatch):
     assert info.full_name == "Edgar Bot"
 
 def test_pytrello_boards(monkeypatch):
+    """
+    Verifies that py-trello can perform board CRUD operations against our mock server.
+    """
     client = TrelloClient(
         api_key='valid_api_key',
         token='valid_api_token'

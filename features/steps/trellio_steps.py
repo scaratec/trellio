@@ -4,22 +4,31 @@ from trellio import TrellioClient
 
 # Helper to run async code in sync behave steps
 def run_async(coro):
+    """
+    Runs an asynchronous coroutine in a synchronous context.
+    Necessary because 'behave' steps are synchronous by default.
+    """
     return asyncio.run(coro)
+
+# --- Authentication Steps ---
 
 @given('a Trellio client with base URL "{url}"')
 def step_impl(context, url):
+    """Sets up the test context with a base URL."""
     context.base_url = url
     context.api_key = None
     context.token = None
 
 @given('a Trellio client with API Key "{api_key}" and Token "{token}"')
 def step_impl(context, api_key, token):
+    """Initializes a TrellioClient with specific credentials."""
     context.api_key = api_key
     context.token = token
     context.client = TrellioClient(api_key=api_key, token=token)
 
 @given('the base URL is "{url}"')
 def step_impl(context, url):
+    """Overrides the client's base URL (e.g., to point to the mock server)."""
     context.base_url = url
     context.client.base_url = url
 
@@ -37,6 +46,7 @@ def step_impl(context, token):
 
 @when('I check my member information')
 def step_impl(context):
+    """Attempts to retrieve member info using the configured credentials."""
     client = TrellioClient(api_key=context.api_key, token=context.token, base_url=context.base_url)
     try:
         context.member_info = run_async(client.get_me())
@@ -68,7 +78,7 @@ def step_impl(context):
 def step_impl(context, text):
     assert text in str(context.error)
 
-# Boards Steps
+# --- Boards Steps ---
 
 @when('I create a new board with name "{name}"')
 def step_impl(context, name):
@@ -88,6 +98,7 @@ def step_impl(context):
 
 @given('a board exists with name "{name}"')
 def step_impl(context, name):
+    """Pre-creates a board on the server to set up the test state."""
     context.existing_board = run_async(context.client.create_board(name))
 
 @when('I list all my boards')

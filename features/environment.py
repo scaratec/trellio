@@ -10,10 +10,15 @@ from behave import fixture, use_fixture
 PORT = 3000
 
 class TrelloMockData:
+    """
+    In-memory data store for the Mock Server.
+    Resets before each scenario to ensure test isolation.
+    """
     def __init__(self):
         self.reset()
 
     def reset(self):
+        """Reset the mock data to its initial state."""
         self.member = {
             "id": "5adde9100465227702830f3a",
             "username": "edgar_bot",
@@ -35,9 +40,14 @@ class TrelloMockData:
 mock_data = TrelloMockData()
 
 class ReusableTCPServer(socketserver.TCPServer):
+    """TCP Server that allows address reuse to avoid 'Address already in use' errors during tests."""
     allow_reuse_address = True
 
 class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
+    """
+    Request Handler that simulates Trello API endpoints.
+    Validates API Key/Token and performs CRUD operations on the in-memory data.
+    """
     def _send_json(self, data, status=200):
         self.send_response(status)
         self.send_header('Content-type', 'application/json')
@@ -49,6 +59,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         return urllib.parse.parse_qs(parsed_path.query)
 
     def _authenticate(self, query_params):
+        """Simple check for hardcoded test credentials."""
         key = query_params.get('key', [None])[0]
         token = query_params.get('token', [None])[0]
         if key == "valid_api_key" and token == "valid_api_token":
@@ -173,6 +184,9 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
 
 @fixture
 def trello_mock_server(context):
+    """
+    Behave fixture to start the mock server in a separate thread before all tests.
+    """
     mock_data.reset()
     server = ReusableTCPServer(("127.0.0.1", PORT), TrelloMockHandler)
     thread = threading.Thread(target=server.serve_forever)
@@ -198,4 +212,5 @@ def before_all(context):
     use_fixture(trello_mock_server, context)
 
 def before_scenario(context, scenario):
+    # Ensure a clean state for every scenario
     mock_data.reset()
