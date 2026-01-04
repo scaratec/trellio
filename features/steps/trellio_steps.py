@@ -149,3 +149,78 @@ def step_impl(context):
         else:
             raise e
     assert not exists
+
+# --- Lists and Cards Steps ---
+
+@given('a list exists on that board with name "{name}"')
+def step_impl(context, name):
+    context.existing_list = run_async(context.client.create_list(context.existing_board.id, name))
+
+@when('I create a new card with name "{card_name}" in the "{list_name}" list')
+def step_impl(context, card_name, list_name):
+    # We assume the list exists from background or setup
+    # In a real scenario, we might look it up. Here we use the context.existing_list
+    assert context.existing_list.name == list_name
+    context.last_card = run_async(context.client.create_card(context.existing_list.id, card_name))
+
+@then('the card should be created successfully')
+def step_impl(context):
+    assert context.last_card is not None
+    assert context.last_card.id is not None
+
+@then('the card name should be "{name}"')
+def step_impl(context, name):
+    assert context.last_card.name == name
+
+@then('the card should belong to the "{list_name}" list')
+def step_impl(context, list_name):
+    # We check if the ID matches (name check would require fetching the list)
+    assert context.last_card.id_list == context.existing_list.id
+
+@given('a card exists in "{list_name}" with name "{card_name}"')
+def step_impl(context, list_name, card_name):
+    # Ensure list exists
+    if not hasattr(context, 'existing_list') or context.existing_list.name != list_name:
+         context.existing_list = run_async(context.client.create_list(context.existing_board.id, list_name))
+    
+    context.existing_card = run_async(context.client.create_card(context.existing_list.id, card_name))
+
+@when('I retrieve the card by its ID')
+def step_impl(context):
+    context.retrieved_card = run_async(context.client.get_card(context.existing_card.id))
+
+@then('the retrieved card name should be "{name}"')
+def step_impl(context, name):
+    assert context.retrieved_card.name == name
+
+@when('I update the card name to "{new_name}"')
+def step_impl(context, new_name):
+    context.updated_card = run_async(context.client.update_card(context.existing_card.id, name=new_name))
+
+@then('the card name should now be "{name}"')
+def step_impl(context, name):
+    assert context.updated_card.name == name
+
+@when('I update the card description to "{description}"')
+def step_impl(context, description):
+    context.updated_card = run_async(context.client.update_card(context.existing_card.id, desc=description))
+
+@then('the card description should be "{description}"')
+def step_impl(context, description):
+    assert context.updated_card.description == description
+
+@when('I delete the card')
+def step_impl(context):
+    run_async(context.client.delete_card(context.existing_card.id))
+
+@then('the card should no longer exist')
+def step_impl(context):
+    try:
+        run_async(context.client.get_card(context.existing_card.id))
+        exists = True
+    except Exception as e:
+        if "404" in str(e):
+            exists = False
+        else:
+            raise e
+    assert not exists

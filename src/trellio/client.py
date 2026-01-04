@@ -1,6 +1,6 @@
 import httpx
-from typing import List, Optional
-from .models import TrelloMember, TrelloBoard
+from typing import List, Optional, Union
+from .models import TrelloMember, TrelloBoard, TrelloList, TrelloCard
 
 class TrellioClient:
     """
@@ -98,6 +98,60 @@ class TrellioClient:
         Delete a board permanently.
         """
         await self._request("DELETE", f"/1/boards/{board_id}")
+
+    async def create_list(self, board_id: str, name: str, pos: Union[str, float] = "top") -> TrelloList:
+        """
+        Create a new list on a board.
+
+        Args:
+            board_id (str): The ID of the board.
+            name (str): The name of the list.
+            pos (str|float, optional): Position of the list. Defaults to "top".
+        """
+        params = {"name": name, "idBoard": board_id, "pos": pos}
+        data = await self._request("POST", "/1/lists", params=params)
+        return TrelloList(**data)
+
+    async def create_card(self, list_id: str, name: str, desc: Optional[str] = None, pos: Union[str, float] = "top") -> TrelloCard:
+        """
+        Create a new card in a list.
+
+        Args:
+            list_id (str): The ID of the list.
+            name (str): The name of the card.
+            desc (str, optional): The description of the card.
+            pos (str|float, optional): Position of the card. Defaults to "top".
+        """
+        params = {"name": name, "idList": list_id, "pos": pos}
+        if desc:
+            params["desc"] = desc
+        
+        data = await self._request("POST", "/1/cards", params=params)
+        return TrelloCard(**data)
+
+    async def get_card(self, card_id: str) -> TrelloCard:
+        """
+        Retrieve a specific card by its ID.
+        """
+        data = await self._request("GET", f"/1/cards/{card_id}")
+        return TrelloCard(**data)
+
+    async def update_card(self, card_id: str, **kwargs) -> TrelloCard:
+        """
+        Update a card's properties.
+
+        Args:
+            card_id (str): The ID of the card.
+            **kwargs: Fields to update (e.g., name, desc, closed, idList, pos).
+        """
+        data = await self._request("PUT", f"/1/cards/{card_id}", params=kwargs)
+        return TrelloCard(**data)
+
+    async def delete_card(self, card_id: str):
+        """
+        Delete a card permanently.
+        """
+        await self._request("DELETE", f"/1/cards/{card_id}")
 
     async def close(self):
         """
