@@ -16,13 +16,24 @@ This project follows a strict **Behavior-Driven Development (BDD)** approach whe
 *   **Disposability & Regenerability:** The project structure and code are designed such that **implementation code (source) and test steps are considered derivative artifacts**. Theoretically, if you were to delete all Python source code and step definitions, they could be re-implemented solely based on the detailed specifications provided in the feature files.
 *   **Validation:** The `behave` test suite ensures that the implementation strictly adheres to the behavior defined in the feature files.
 
-## 📦 Features (Planned)
+## 🧪 Testing & Mocking Strategy
+
+Since there is no official OpenAPI specification available, we ensure correctness through a multi-stage process:
+
+1.  **Mock Server:** We implement a custom Python-based mock server that simulates the Trello API.
+2.  **Mock Validation:** We use the established `py-trello` library as a reference client to test our mock server. If `py-trello` works against our mock, the mock is considered valid.
+3.  **Library Implementation:** Our new async library, `trellio`, is then implemented and tested against this validated mock server.
+
+## 📦 Features (Initial Scope)
 
 *   **Fully Asynchronous:** Built with `httpx` for non-blocking I/O.
-*   **Type Hinted:** Comprehensive type hints for better developer experience and IDE support.
-*   **OAuth 1.0a Support:** Correctly handles Trello's authentication mechanism asynchronously.
-*   **Domain Objects:** Provides Pythonic objects (`Board`, `List`, `Card`, etc.) instead of raw dictionaries.
-*   **Pydantic Models:** Uses Pydantic for robust data validation and serialization.
+*   **Authentication:** Supports the standard Trello **API Key and Token** mechanism.
+*   **Core CRUD Operations:**
+    *   **Boards:** List, create, read, update, delete.
+    *   **Lists:** Manage lists within boards.
+    *   **Cards:** Full card lifecycle management.
+*   **Type Hinted:** Comprehensive type hints for better developer experience.
+*   **Domain Objects:** Pythonic objects (`Board`, `List`, `Card`) powered by **Pydantic**.
 
 ## 🛠️ Development Setup
 
