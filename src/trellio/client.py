@@ -126,10 +126,12 @@ class TrellioClient:
         data = await self._authenticated_request("GET", f"/1/lists/{list_id}/cards")
         return [TrelloCard(**card) for card in data]
 
-    async def create_card(self, list_id: str, name: str, desc: Optional[str] = None, pos: Union[str, float] = "top") -> TrelloCard:
+    async def create_card(self, list_id: str, name: str, desc: Optional[str] = None, pos: Union[str, float] = "top", idLabels: Optional[str] = None) -> TrelloCard:
         params = {"name": name, "idList": list_id, "pos": pos}
         if desc:
             params["desc"] = desc
+        if idLabels:
+            params["idLabels"] = idLabels
         data = await self._authenticated_request("POST", "/1/cards", params=params)
         return TrelloCard(**data)
 
@@ -143,6 +145,12 @@ class TrellioClient:
 
     async def delete_card(self, card_id: str):
         await self._authenticated_request("DELETE", f"/1/cards/{card_id}")
+
+    async def add_label_to_card(self, card_id: str, label_id: str):
+        await self._authenticated_request("POST", f"/1/cards/{card_id}/idLabels", params={"value": label_id})
+
+    async def remove_label_from_card(self, card_id: str, label_id: str):
+        await self._authenticated_request("DELETE", f"/1/cards/{card_id}/idLabels/{label_id}")
 
     # --- Labels ---
 
