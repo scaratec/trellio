@@ -1,6 +1,17 @@
 from .client import TrellioClient
 from .errors import TrelloAPIError
-from .models import TrelloMember, TrelloBoard, TrelloList, TrelloCard
+from .models import (
+    TrelloMember,
+    TrelloBoard,
+    TrelloList,
+    TrelloCard,
+    TrelloLabel,
+    TrelloCheckItem,
+    TrelloChecklist,
+    TrelloComment,
+    TrelloAttachment,
+    TrelloWebhook,
+)
 
 __all__ = [
     "TrellioClient",
@@ -9,4 +20,10 @@ __all__ = [
     "TrelloBoard",
     "TrelloList",
     "TrelloCard",
+    "TrelloLabel",
+    "TrelloCheckItem",
+    "TrelloChecklist",
+    "TrelloComment",
+    "TrelloAttachment",
+    "TrelloWebhook",
 ]

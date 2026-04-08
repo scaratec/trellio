@@ -22,6 +22,50 @@ class TrelloList(BaseModel):
     closed: bool = False
     pos: float | int = 0
 
+class TrelloLabel(BaseModel):
+    id: str
+    name: str
+    color: Optional[str] = None
+    id_board: str = Field(alias="idBoard")
+
+
+class TrelloCheckItem(BaseModel):
+    id: str
+    name: str
+    state: str = "incomplete"
+
+
+class TrelloChecklist(BaseModel):
+    id: str
+    name: str
+    id_card: str = Field(alias="idCard")
+    check_items: List["TrelloCheckItem"] = Field(default_factory=list, alias="checkItems")
+
+
+class TrelloComment(BaseModel):
+    id: str
+    text: str
+    date: Optional[str] = None
+    id_member_creator: Optional[str] = Field(default=None, alias="idMemberCreator")
+
+
+class TrelloAttachment(BaseModel):
+    id: str
+    name: str
+    url: str
+    bytes: Optional[int] = None
+    date: Optional[str] = None
+    id_member: Optional[str] = Field(default=None, alias="idMember")
+
+
+class TrelloWebhook(BaseModel):
+    id: str
+    description: Optional[str] = None
+    callback_url: str = Field(alias="callbackURL")
+    id_model: str = Field(alias="idModel")
+    active: bool = True
+
+
 class TrelloCard(BaseModel):
     id: str
     name: str

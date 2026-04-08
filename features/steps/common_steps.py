@@ -28,7 +28,7 @@ def step_init_client_with_url(context, url):
 def step_init_client_with_credentials(context, api_key, token):
     context.api_key = api_key
     context.token = token
-    context.client = TrellioClient(api_key=api_key, token=token)
+    context.client = TrellioClient(api_key=api_key, token=token, initial_delay=0.0)
 
 
 @given('the base URL is "{url}"')

@@ -1,15 +1,26 @@
+import asyncio
 import httpx
-from typing import List, Optional, Union
-from .models import TrelloMember, TrelloBoard, TrelloList, TrelloCard
+from typing import AsyncGenerator, List, Optional, Union
+from .models import (
+    TrelloMember, TrelloBoard, TrelloList, TrelloCard,
+    TrelloLabel, TrelloChecklist, TrelloCheckItem,
+    TrelloComment, TrelloAttachment, TrelloWebhook,
+)
 from .errors import TrelloAPIError
+
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class TrellioClient:
 
-    def __init__(self, api_key: str, token: str, base_url: str = "https://api.trello.com"):
+    def __init__(self, api_key: str, token: str, base_url: str = "https://api.trello.com",
+                 max_retries: int = 3, initial_delay: float = 1.0, backoff_factor: float = 2.0):
         self.api_key = api_key
         self.token = token
         self.base_url = base_url.rstrip("/")
+        self.max_retries = max_retries
+        self.initial_delay = initial_delay
+        self.backoff_factor = backoff_factor
         self._client = httpx.AsyncClient()
 
     async def _authenticated_request(self, method: str, path: str, **kwargs):
@@ -19,20 +30,48 @@ class TrellioClient:
         kwargs["params"] = params
 
         url = f"{self.base_url}{path}"
-        response = await self._client.request(method, url, **kwargs)
+        last_error = None
 
-        if response.status_code != 200:
-            raise TrelloAPIError(response.status_code, response.text)
+        for attempt in range(self.max_retries + 1):
+            response = await self._client.request(method, url, **kwargs)
 
-        return response.json()
+            if response.status_code == 200:
+                return response.json()
+
+            if response.status_code not in RETRYABLE_STATUS_CODES or attempt == self.max_retries:
+                raise TrelloAPIError(response.status_code, response.text)
+
+            last_error = TrelloAPIError(response.status_code, response.text)
+            delay = self.initial_delay * (self.backoff_factor ** attempt)
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+        raise last_error
 
     async def get_me(self) -> TrelloMember:
         data = await self._authenticated_request("GET", "/1/members/me")
         return TrelloMember(**data)
 
-    async def list_boards(self) -> List[TrelloBoard]:
-        data = await self._authenticated_request("GET", "/1/members/me/boards")
+    async def list_boards(self, limit: Optional[int] = None, since: Optional[str] = None) -> List[TrelloBoard]:
+        params = {}
+        if limit is not None:
+            params["limit"] = limit
+        if since is not None:
+            params["since"] = since
+        data = await self._authenticated_request("GET", "/1/members/me/boards", params=params)
         return [TrelloBoard(**board) for board in data]
+
+    async def list_all_boards(self, page_size: int = 50) -> AsyncGenerator[TrelloBoard, None]:
+        cursor = None
+        while True:
+            boards = await self.list_boards(limit=page_size, since=cursor)
+            if not boards:
+                break
+            for board in boards:
+                yield board
+            if len(boards) < page_size:
+                break
+            cursor = boards[-1].id
 
     async def create_board(self, name: str, description: Optional[str] = None) -> TrelloBoard:
         params = {"name": name}
@@ -74,6 +113,116 @@ class TrellioClient:
 
     async def delete_card(self, card_id: str):
         await self._authenticated_request("DELETE", f"/1/cards/{card_id}")
+
+    # --- Labels ---
+
+    async def list_board_labels(self, board_id: str) -> List[TrelloLabel]:
+        data = await self._authenticated_request("GET", f"/1/boards/{board_id}/labels")
+        return [TrelloLabel(**label) for label in data]
+
+    async def create_label(self, name: str, color: str, board_id: str) -> TrelloLabel:
+        params = {"name": name, "color": color, "idBoard": board_id}
+        data = await self._authenticated_request("POST", "/1/labels", params=params)
+        return TrelloLabel(**data)
+
+    async def update_label(self, label_id: str, **kwargs) -> TrelloLabel:
+        data = await self._authenticated_request("PUT", f"/1/labels/{label_id}", params=kwargs)
+        return TrelloLabel(**data)
+
+    async def delete_label(self, label_id: str):
+        await self._authenticated_request("DELETE", f"/1/labels/{label_id}")
+
+    # --- Checklists ---
+
+    async def create_checklist(self, card_id: str, name: str) -> TrelloChecklist:
+        params = {"idCard": card_id, "name": name}
+        data = await self._authenticated_request("POST", "/1/checklists", params=params)
+        return TrelloChecklist(**data)
+
+    async def get_checklist(self, checklist_id: str) -> TrelloChecklist:
+        data = await self._authenticated_request("GET", f"/1/checklists/{checklist_id}")
+        return TrelloChecklist(**data)
+
+    async def delete_checklist(self, checklist_id: str):
+        await self._authenticated_request("DELETE", f"/1/checklists/{checklist_id}")
+
+    async def create_check_item(self, checklist_id: str, name: str) -> TrelloCheckItem:
+        data = await self._authenticated_request("POST", f"/1/checklists/{checklist_id}/checkItems", params={"name": name})
+        return TrelloCheckItem(**data)
+
+    async def update_check_item(self, card_id: str, check_item_id: str, state: str) -> TrelloCheckItem:
+        data = await self._authenticated_request("PUT", f"/1/cards/{card_id}/checkItem/{check_item_id}", params={"state": state})
+        return TrelloCheckItem(**data)
+
+    async def delete_check_item(self, checklist_id: str, check_item_id: str):
+        await self._authenticated_request("DELETE", f"/1/checklists/{checklist_id}/checkItems/{check_item_id}")
+
+    # --- Comments ---
+
+    async def add_comment(self, card_id: str, text: str) -> TrelloComment:
+        data = await self._authenticated_request("POST", f"/1/cards/{card_id}/actions/comments", params={"text": text})
+        return TrelloComment(**data)
+
+    async def list_comments(self, card_id: str) -> List[TrelloComment]:
+        data = await self._authenticated_request("GET", f"/1/cards/{card_id}/actions", params={"filter": "commentCard"})
+        return [TrelloComment(**comment) for comment in data]
+
+    async def update_comment(self, comment_id: str, text: str) -> TrelloComment:
+        data = await self._authenticated_request("PUT", f"/1/actions/{comment_id}", params={"text": text})
+        return TrelloComment(**data)
+
+    async def delete_comment(self, comment_id: str):
+        await self._authenticated_request("DELETE", f"/1/actions/{comment_id}")
+
+    # --- Members ---
+
+    async def list_board_members(self, board_id: str) -> List[TrelloMember]:
+        data = await self._authenticated_request("GET", f"/1/boards/{board_id}/members")
+        return [TrelloMember(**member) for member in data]
+
+    async def get_member(self, member_id: str) -> TrelloMember:
+        data = await self._authenticated_request("GET", f"/1/members/{member_id}")
+        return TrelloMember(**data)
+
+    # --- Attachments ---
+
+    async def list_attachments(self, card_id: str) -> List[TrelloAttachment]:
+        data = await self._authenticated_request("GET", f"/1/cards/{card_id}/attachments")
+        return [TrelloAttachment(**att) for att in data]
+
+    async def create_attachment(self, card_id: str, url: str, name: Optional[str] = None) -> TrelloAttachment:
+        params = {"url": url}
+        if name:
+            params["name"] = name
+        data = await self._authenticated_request("POST", f"/1/cards/{card_id}/attachments", params=params)
+        return TrelloAttachment(**data)
+
+    async def delete_attachment(self, card_id: str, attachment_id: str):
+        await self._authenticated_request("DELETE", f"/1/cards/{card_id}/attachments/{attachment_id}")
+
+    # --- Webhooks ---
+
+    async def create_webhook(self, callback_url: str, id_model: str, description: Optional[str] = None) -> TrelloWebhook:
+        params = {"callbackURL": callback_url, "idModel": id_model}
+        if description:
+            params["description"] = description
+        data = await self._authenticated_request("POST", "/1/webhooks", params=params)
+        return TrelloWebhook(**data)
+
+    async def list_webhooks(self) -> List[TrelloWebhook]:
+        data = await self._authenticated_request("GET", "/1/webhooks")
+        return [TrelloWebhook(**wh) for wh in data]
+
+    async def get_webhook(self, webhook_id: str) -> TrelloWebhook:
+        data = await self._authenticated_request("GET", f"/1/webhooks/{webhook_id}")
+        return TrelloWebhook(**data)
+
+    async def update_webhook(self, webhook_id: str, **kwargs) -> TrelloWebhook:
+        data = await self._authenticated_request("PUT", f"/1/webhooks/{webhook_id}", params=kwargs)
+        return TrelloWebhook(**data)
+
+    async def delete_webhook(self, webhook_id: str):
+        await self._authenticated_request("DELETE", f"/1/webhooks/{webhook_id}")
 
     async def close(self):
         await self._client.aclose()
