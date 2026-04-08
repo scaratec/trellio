@@ -23,6 +23,16 @@ def step_force_error_with_countdown(context, status_code, count, message):
     }
 
 
+@given('the server will respond with a {status_code:d} error "{message}" with Retry-After {seconds:g} for {count:d} requests')
+def step_force_error_with_retry_after(context, status_code, message, seconds, count):
+    context.mock_data.forced_error = {
+        "status": status_code,
+        "body": {"message": message, "error": "ERROR"},
+        "remaining_count": count,
+        "headers": {"Retry-After": str(seconds)},
+    }
+
+
 @given('the server will respond with a {status_code:d} error "{message}" permanently')
 def step_force_error_permanent(context, status_code, message):
     context.mock_data.forced_error = {

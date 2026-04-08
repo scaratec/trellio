@@ -1,6 +1,7 @@
 import http.server
 import socketserver
 import json
+import time
 import urllib.parse
 import uuid
 
@@ -41,6 +42,7 @@ class TrelloMockData:
         self.attachments = {}
         self.webhooks = {}
         self.forced_error = None
+        self.forced_delay = None
 
     def set_member(self, username, full_name, email="test@example.com"):
         self.member["username"] = username
@@ -60,9 +62,12 @@ class ReusableTCPServer(socketserver.TCPServer):
 
 class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
 
-    def _send_json(self, data, status=200):
+    def _send_json(self, data, status=200, extra_headers=None):
         self.send_response(status)
         self.send_header('Content-type', 'application/json')
+        if extra_headers:
+            for key, value in extra_headers.items():
+                self.send_header(key, value)
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
 
@@ -84,9 +89,14 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         token = query_params.get('token', [None])[0]
         return key == "valid_api_key" and token == "valid_api_token"
 
+    def _apply_forced_delay(self):
+        if mock_data.forced_delay:
+            time.sleep(mock_data.forced_delay)
+
     def _has_forced_error(self):
         if mock_data.forced_error:
-            self._send_json(mock_data.forced_error["body"], status=mock_data.forced_error["status"])
+            extra_headers = mock_data.forced_error.get("headers")
+            self._send_json(mock_data.forced_error["body"], status=mock_data.forced_error["status"], extra_headers=extra_headers)
             remaining = mock_data.forced_error.get("remaining_count")
             if remaining is not None:
                 mock_data.forced_error["remaining_count"] = remaining - 1
@@ -112,6 +122,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- GET ---
 
     def do_GET(self):
+        self._apply_forced_delay()
         if self._has_forced_error():
             return
         params = self._get_query_params()
@@ -142,6 +153,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_get_member(path)
         elif path.startswith("/1/labels/"):
             self._handle_get_label(path)
+        elif path == "/1/search":
+            self._handle_search(params or {})
         else:
             self._send_not_found()
 
@@ -215,8 +228,25 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_get_card_comments(card_id, params or {})
         elif len(parts) == 5 and parts[4] == "attachments":
             self._handle_get_card_attachments(card_id)
+        elif len(parts) == 5 and parts[4] == "checklists":
+            self._handle_get_card_checklists(card_id)
         else:
             self._send_not_found()
+
+    def _handle_get_card_checklists(self, card_id):
+        if card_id not in mock_data.cards:
+            self._send_not_found()
+            return
+        card_checklists = []
+        for cl in mock_data.checklists.values():
+            if cl["idCard"] == card_id:
+                checklist = dict(cl)
+                checklist["checkItems"] = [
+                    ci for ci in mock_data.check_items.values()
+                    if ci["idChecklist"] == cl["id"]
+                ]
+                card_checklists.append(checklist)
+        self._send_json(card_checklists)
 
     def _handle_get_card_comments(self, card_id, params):
         if card_id not in mock_data.cards:
@@ -263,6 +293,24 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self._send_not_found()
 
+    def _handle_search(self, params):
+        query = params.get('query', [None])[0]
+        if not query:
+            self._send_bad_request("query")
+            return
+        boards_limit = int(params.get('boards_limit', [10])[0])
+        cards_limit = int(params.get('cards_limit', [10])[0])
+        query_lower = query.lower()
+        matching_boards = [
+            b for b in mock_data.boards.values()
+            if query_lower in b["name"].lower() or query_lower in b.get("desc", "").lower()
+        ][:boards_limit]
+        matching_cards = [
+            c for c in mock_data.cards.values()
+            if query_lower in c["name"].lower() or query_lower in c.get("desc", "").lower()
+        ][:cards_limit]
+        self._send_json({"boards": matching_boards, "cards": matching_cards})
+
     def _handle_get_label(self, path):
         label_id = path.split("/")[-1]
         if label_id in mock_data.labels:
@@ -273,6 +321,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- POST ---
 
     def do_POST(self):
+        self._apply_forced_delay()
         if self._has_forced_error():
             return
         params = self._get_query_params()
@@ -503,6 +552,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- PUT ---
 
     def do_PUT(self):
+        self._apply_forced_delay()
         if self._has_forced_error():
             return
         params = self._get_query_params()
@@ -594,6 +644,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- DELETE ---
 
     def do_DELETE(self):
+        self._apply_forced_delay()
         if self._has_forced_error():
             return
         params = self._get_query_params()

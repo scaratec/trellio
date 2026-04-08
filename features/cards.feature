@@ -54,6 +54,14 @@ Feature: Trello Cards Management
     When I delete the card
     Then the card should no longer exist
 
+  Scenario: List all cards in a list
+    Given a card exists in "To Do" with name "Card Alpha"
+    And a card exists in "To Do" with name "Card Beta"
+    When I list all cards in the "To Do" list
+    Then I should see exactly 2 cards in the list
+    And one of the cards should have name "Card Alpha"
+    And one of the cards should have name "Card Beta"
+
   Scenario: Fail to create a card without a name
     When I attempt to create a card without a name in the "To Do" list
     Then the request should fail with a 400 error

@@ -28,6 +28,14 @@ Feature: Trello Checklists Management
     When I retrieve the checklist by its ID
     Then the retrieved checklist name should be "Review Checklist"
 
+  Scenario: List all checklists on a card
+    Given a checklist exists on the card with name "QA Checklist"
+    And a checklist exists on the card with name "Deploy Checklist"
+    When I list all checklists on the card
+    Then I should see exactly 2 checklists
+    And one of the checklists should have name "QA Checklist"
+    And one of the checklists should have name "Deploy Checklist"
+
   Scenario: Delete a checklist
     Given a checklist exists on the card with name "Temporary Checklist"
     When I delete the checklist

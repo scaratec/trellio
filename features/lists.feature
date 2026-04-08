@@ -20,6 +20,14 @@ Feature: Trello Lists Management
       | To Do       |
       | In Progress |
 
+  Scenario: List all lists on a board
+    Given a list was created on the board with name "Backlog"
+    And a list was created on the board with name "Done"
+    When I list all lists on the board
+    Then I should see exactly 2 lists
+    And one of the lists should have name "Backlog"
+    And one of the lists should have name "Done"
+
   Scenario: Fail to create a list without a name
     When I attempt to create a list without a name on the board
     Then the request should fail with a 400 error

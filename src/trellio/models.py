@@ -66,6 +66,11 @@ class TrelloWebhook(BaseModel):
     active: bool = True
 
 
+class TrelloSearchResult(BaseModel):
+    boards: List["TrelloBoard"] = Field(default_factory=list)
+    cards: List["TrelloCard"] = Field(default_factory=list)
+
+
 class TrelloCard(BaseModel):
     id: str
     name: str

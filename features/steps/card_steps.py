@@ -41,6 +41,23 @@ def step_delete_card(context):
     run_async(context.client.delete_card(context.existing_card.id))
 
 
+@when('I list all cards in the "{list_name}" list')
+def step_list_cards_in_list(context, list_name):
+    assert context.existing_list.name == list_name
+    context.cards_in_list = run_async(context.client.list_cards(context.existing_list.id))
+
+
+@then('I should see exactly {count:d} cards in the list')
+def step_assert_card_count_in_list(context, count):
+    assert len(context.cards_in_list) == count, f"Expected {count}, got {len(context.cards_in_list)}"
+
+
+@then('one of the cards should have name "{name}"')
+def step_assert_card_in_list_result(context, name):
+    names = [c.name for c in context.cards_in_list]
+    assert name in names, f"'{name}' not in {names}"
+
+
 @when('I attempt to create a card without a name in the "{list_name}" list')
 def step_attempt_create_card_without_name(context, list_name):
     assert context.existing_list.name == list_name

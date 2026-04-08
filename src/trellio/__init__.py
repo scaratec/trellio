@@ -11,6 +11,7 @@ from .models import (
     TrelloComment,
     TrelloAttachment,
     TrelloWebhook,
+    TrelloSearchResult,
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "TrelloComment",
     "TrelloAttachment",
     "TrelloWebhook",
+    "TrelloSearchResult",
 ]

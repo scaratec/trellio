@@ -23,6 +23,22 @@ def step_get_checklist(context):
     context.retrieved_checklist = run_async(context.client.get_checklist(context.existing_checklist.id))
 
 
+@when('I list all checklists on the card')
+def step_list_card_checklists(context):
+    context.checklists_result = run_async(context.client.list_card_checklists(context.existing_card.id))
+
+
+@then('I should see exactly {count:d} checklists')
+def step_assert_checklist_count(context, count):
+    assert len(context.checklists_result) == count, f"Expected {count}, got {len(context.checklists_result)}"
+
+
+@then('one of the checklists should have name "{name}"')
+def step_assert_checklist_in_result(context, name):
+    names = [cl.name for cl in context.checklists_result]
+    assert name in names, f"'{name}' not in {names}"
+
+
 @when('I delete the checklist')
 def step_delete_checklist(context):
     run_async(context.client.delete_checklist(context.existing_checklist.id))

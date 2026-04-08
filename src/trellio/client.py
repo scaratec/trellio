@@ -1,12 +1,17 @@
 import asyncio
+import logging
+import time
 import httpx
 from typing import AsyncGenerator, List, Optional, Union
 from .models import (
     TrelloMember, TrelloBoard, TrelloList, TrelloCard,
     TrelloLabel, TrelloChecklist, TrelloCheckItem,
     TrelloComment, TrelloAttachment, TrelloWebhook,
+    TrelloSearchResult,
 )
 from .errors import TrelloAPIError
+
+logger = logging.getLogger("trellio")
 
 RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
@@ -14,14 +19,16 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 class TrellioClient:
 
     def __init__(self, api_key: str, token: str, base_url: str = "https://api.trello.com",
-                 max_retries: int = 3, initial_delay: float = 1.0, backoff_factor: float = 2.0):
+                 max_retries: int = 3, initial_delay: float = 1.0, backoff_factor: float = 2.0,
+                 timeout: float = 30.0):
         self.api_key = api_key
         self.token = token
         self.base_url = base_url.rstrip("/")
         self.max_retries = max_retries
         self.initial_delay = initial_delay
         self.backoff_factor = backoff_factor
-        self._client = httpx.AsyncClient()
+        self.timeout = timeout
+        self._client = httpx.AsyncClient(timeout=timeout)
 
     async def _authenticated_request(self, method: str, path: str, **kwargs):
         params = kwargs.get("params", {})
@@ -33,16 +40,31 @@ class TrellioClient:
         last_error = None
 
         for attempt in range(self.max_retries + 1):
-            response = await self._client.request(method, url, **kwargs)
+            start = time.monotonic()
+            try:
+                response = await self._client.request(method, url, **kwargs)
+            except httpx.TimeoutException:
+                logger.error("%s %s timed out after %.0fms", method, path, (time.monotonic() - start) * 1000)
+                raise TrelloAPIError(0, "Request timed out")
+
+            duration_ms = (time.monotonic() - start) * 1000
+            logger.debug("%s %s %d (%.0fms)", method, path, response.status_code, duration_ms)
 
             if response.status_code == 200:
                 return response.json()
 
             if response.status_code not in RETRYABLE_STATUS_CODES or attempt == self.max_retries:
+                logger.error("Request failed: %s %s %d", method, path, response.status_code)
                 raise TrelloAPIError(response.status_code, response.text)
 
+            retry_after = response.headers.get("Retry-After")
+            if retry_after:
+                delay = float(retry_after)
+            else:
+                delay = self.initial_delay * (self.backoff_factor ** attempt)
+            logger.warning("Retry %d/%d for %s %s (status %d, delay %.1fs)",
+                           attempt + 1, self.max_retries, method, path, response.status_code, delay)
             last_error = TrelloAPIError(response.status_code, response.text)
-            delay = self.initial_delay * (self.backoff_factor ** attempt)
             if delay > 0:
                 await asyncio.sleep(delay)
 
@@ -96,6 +118,14 @@ class TrellioClient:
         data = await self._authenticated_request("POST", "/1/lists", params=params)
         return TrelloList(**data)
 
+    async def list_lists(self, board_id: str) -> List[TrelloList]:
+        data = await self._authenticated_request("GET", f"/1/boards/{board_id}/lists")
+        return [TrelloList(**lst) for lst in data]
+
+    async def list_cards(self, list_id: str) -> List[TrelloCard]:
+        data = await self._authenticated_request("GET", f"/1/lists/{list_id}/cards")
+        return [TrelloCard(**card) for card in data]
+
     async def create_card(self, list_id: str, name: str, desc: Optional[str] = None, pos: Union[str, float] = "top") -> TrelloCard:
         params = {"name": name, "idList": list_id, "pos": pos}
         if desc:
@@ -133,6 +163,10 @@ class TrellioClient:
         await self._authenticated_request("DELETE", f"/1/labels/{label_id}")
 
     # --- Checklists ---
+
+    async def list_card_checklists(self, card_id: str) -> List[TrelloChecklist]:
+        data = await self._authenticated_request("GET", f"/1/cards/{card_id}/checklists")
+        return [TrelloChecklist(**cl) for cl in data]
 
     async def create_checklist(self, card_id: str, name: str) -> TrelloChecklist:
         params = {"idCard": card_id, "name": name}
@@ -223,6 +257,17 @@ class TrellioClient:
 
     async def delete_webhook(self, webhook_id: str):
         await self._authenticated_request("DELETE", f"/1/webhooks/{webhook_id}")
+
+    # --- Search ---
+
+    async def search(self, query: str, model_types: Optional[str] = None, limit: int = 10) -> TrelloSearchResult:
+        params = {"query": query, "cards_limit": limit, "boards_limit": limit}
+        if model_types:
+            params["modelTypes"] = model_types
+        data = await self._authenticated_request("GET", "/1/search", params=params)
+        boards = [TrelloBoard(**b) for b in data.get("boards", [])]
+        cards = [TrelloCard(**c) for c in data.get("cards", [])]
+        return TrelloSearchResult(boards=boards, cards=cards)
 
     async def close(self):
         await self._client.aclose()

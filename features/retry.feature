@@ -38,6 +38,13 @@ Feature: Retry with Exponential Backoff
     When I retrieve a board with ID "nonexistent_id_123"
     Then the request should fail with a 404 error
 
+  Scenario: Retry respects Retry-After header from server
+    Given a board exists with name "Retry-After Board"
+    And I have the ID of that board
+    And the server will respond with a 429 error "Rate limit exceeded" with Retry-After 0 for 1 requests
+    When I retrieve the board by its ID
+    Then the retrieved board name should be "Retry-After Board"
+
   Scenario: Successful board creation after transient 429
     And the server will respond with a 429 error "Rate limit exceeded" for 1 requests
     When I create a new board with name "Created After Retry"
