@@ -5,99 +5,128 @@
 
 **Trellio** is a modern, asynchronous Python wrapper for the Trello API, built on top of `httpx`. It is designed to be lightweight, efficient, and easy to use in modern `asyncio` applications.
 
-## 🚀 Philosophy: BDD & Single Source of Truth
+## Philosophy: BDD & Single Source of Truth
 
-This project follows a strict **Behavior-Driven Development (BDD)** approach where the Gherkin feature files are the absolute **Single Source of Truth**.
+This project follows a strict **Behavior-Driven Development (BDD)** approach where the Gherkin feature files are the absolute **Single Source of Truth** for business logic (see [BDD Guidelines v1.8.0](https://github.com/your-org/bdd-guidelines)).
 
 ### What does this mean?
 
 *   **Specification First:** All functionality is defined in `.feature` files (using Gherkin syntax) *before* any code is written.
 *   **Living Documentation:** The feature files serve as both the requirement specification and the documentation of the library's behavior.
-*   **Disposability & Regenerability:** The project structure and code are designed such that **implementation code (source) and test steps are considered derivative artifacts**. Theoretically, if you were to delete all Python source code and step definitions, they could be re-implemented solely based on the detailed specifications provided in the feature files.
-*   **Validation:** The `behave` test suite ensures that the implementation strictly adheres to the behavior defined in the feature files.
+*   **Disposability & Regenerability:** Implementation code and step definitions are derivative artifacts. They could be re-implemented solely from the feature files.
+*   **Validation:** The `behave` test suite ensures the implementation strictly adheres to the specified behavior.
+*   **Data Explicitness:** All business-relevant data is visible in the feature files. No hidden constants in step code or mocks.
+*   **Persistence Validation:** Write operations are independently verified through a second channel (re-GET after POST/PUT/DELETE).
+*   **Anti-Hardcoding:** Critical fields use `Scenario Outline` with multiple data variants to prevent trivial hardcoding.
 
-## 📂 Project Structure
-
-A concise overview of the project's layout and the purpose of key files:
+## Project Structure
 
 ```text
 trellio/
-├── features/                  # BDD Tests (Single Source of Truth)
+├── features/                        # BDD Tests (Single Source of Truth)
 │   ├── steps/
-│   │   └── trellio_steps.py   # Step definitions implementing the .feature files
-│   ├── authentication.feature # Gherkin specs for Auth
-│   ├── boards.feature         # Gherkin specs for Board management
-│   └── environment.py         # Test environment setup & Mock Server implementation
+│   │   ├── common_steps.py          # Shared steps: client setup, error assertions
+│   │   ├── auth_steps.py            # Authentication step definitions
+│   │   ├── board_steps.py           # Board CRUD step definitions
+│   │   ├── card_steps.py            # Card CRUD step definitions
+│   │   └── list_steps.py            # List management step definitions
+│   ├── authentication.feature       # Auth specs (happy + error paths)
+│   ├── boards.feature               # Board CRUD specs (happy + error + server errors)
+│   ├── cards.feature                # Card CRUD specs (happy + error + server errors)
+│   ├── lists.feature                # List management specs (happy + error + server errors)
+│   └── environment.py               # Test environment setup (mock server lifecycle)
 │
 ├── src/
-│   └── trellio/               # The actual library source code
-│       ├── __init__.py        # Exports public API
-│       ├── client.py          # Main TrellioClient implementation (httpx)
-│       └── models.py          # Pydantic data models (TrelloMember, TrelloBoard)
+│   └── trellio/                     # Library source code
+│       ├── __init__.py              # Public API exports
+│       ├── client.py                # Async TrellioClient (httpx)
+│       └── models.py                # Pydantic models (Member, Board, List, Card)
 │
 ├── tests/
-│   └── validation/            # Verification tests for the Mock Server
-│       └── test_mock_with_pytrello.py # Validates our Mock against the reference lib
+│   ├── mock_server.py               # Custom Trello API mock server
+│   └── validation/
+│       └── test_mock_with_pytrello.py  # Mock validation against py-trello
 │
-├── requirements.txt           # Production dependencies (httpx, pydantic)
-└── requirements-dev.txt       # Dev dependencies (behave, py-trello, pytest)
+├── docs/
+│   └── adr/
+│       ├── 001-custom-mock-server.md       # ADR: Custom mock server approach
+│       ├── 002-mock-server-selection.md    # ADR: Mock strategy comparison
+│       └── 003-failure-path-enumeration.md # ADR: Systematic failure path coverage
+│
+├── requirements.txt                 # Production dependencies (httpx, pydantic)
+└── requirements-dev.txt             # Dev dependencies (behave, py-trello, pytest)
 ```
 
-## 🧪 Testing & Mocking Strategy
+## Test Coverage
 
-Since there is no official OpenAPI specification available, we ensure correctness through a multi-stage process:
+The BDD suite covers **4 features, 39 scenarios, 253 steps**:
 
-1.  **Mock Server (`features/environment.py`):** We implement a custom Python-based mock server that simulates the Trello API. This server runs in a separate thread during tests.
-2.  **Mock Validation (`tests/validation/`):** We use the established `py-trello` library as a reference client to test our mock server. If `py-trello` works against our mock, the mock is considered valid and compliant with Trello's actual behavior.
-3.  **Library Implementation (`src/trellio/`):** Our new async library, `trellio`, is then implemented and tested against this validated mock server using the BDD features.
+| Feature        | Happy Paths | Error Paths | Server Errors | Total |
+|----------------|-------------|-------------|---------------|-------|
+| Authentication | 2 (Outline) | 4           | -             | 6     |
+| Boards         | 5 (2 Outline) | 4         | 2 (429, 500)  | 11    |
+| Cards          | 5 (3 Outline) | 5         | 2 (429, 500)  | 12    |
+| Lists          | 2 (Outline) | 2           | 1 (429)       | 5     |
+| **Total**      | **14**      | **15**      | **5**         | **39**|
 
-## 📦 Features (Initial Scope)
+All 27 identified failure paths are covered (see [ADR 003](docs/adr/003-failure-path-enumeration.md) for the full layer-by-layer enumeration).
+
+## Testing & Mocking Strategy
+
+Since Trello does not provide an official OpenAPI specification, we ensure correctness through a multi-stage process:
+
+1.  **Mock Server (`tests/mock_server.py`):** A custom Python mock server simulates the Trello API with in-memory state, JSON error responses (400/401/404/429/500), and a `forced_error` mechanism for server error simulation.
+2.  **Mock Validation (`tests/validation/`):** The established `py-trello` library validates that our mock behaves like the real Trello API.
+3.  **BDD Specification (`features/`):** The `trellio` library is developed and tested against the validated mock using `behave`.
+
+## Features
 
 *   **Fully Asynchronous:** Built with `httpx` for non-blocking I/O.
-*   **Authentication:** Supports the standard Trello **API Key and Token** mechanism.
+*   **Authentication:** Trello API Key and Token mechanism.
 *   **Core CRUD Operations:**
     *   **Boards:** List, create, read, update, delete.
-    *   **Lists:** Manage lists within boards.
-    *   **Cards:** Full card lifecycle management.
-*   **Type Hinted:** Comprehensive type hints for better developer experience.
-*   **Domain Objects:** Pythonic objects (`Board`, `List`, `Card`) powered by **Pydantic**.
+    *   **Lists:** Create lists on boards.
+    *   **Cards:** Full card lifecycle management (create, read, update, delete).
+*   **Type Hinted:** Comprehensive type hints throughout.
+*   **Domain Objects:** Pythonic models (`TrelloBoard`, `TrelloList`, `TrelloCard`) powered by **Pydantic**.
 
-## 🛠️ Development Setup
+## Development Setup
 
 ### Prerequisites
 
 *   Python 3.9+
-*   `uv` (recommended) or `pip`
 
 ### Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/yourusername/trellio.git
-    cd trellio
-    ```
+```bash
+git clone https://github.com/yourusername/trellio.git
+cd trellio
 
-2.  **Set up the environment:**
-    ```bash
-    # Create virtual environment
-    python3 -m venv .venv
-    source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 
-    # Install dependencies
-    pip install -r requirements.txt
-    pip install -r requirements-dev.txt
-    ```
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
 
 ### Running Tests
 
-To execute the BDD test suite:
-
 ```bash
-behave
+# BDD test suite
+PYTHONPATH=src python -m behave
+
+# Mock validation tests
+PYTHONPATH=src pytest tests/validation/
 ```
 
-This will parse the feature files in the `features/` directory and run the corresponding steps.
+## Architecture Decisions
 
-## 📄 License
+| ADR | Title | Status |
+|-----|-------|--------|
+| [001](docs/adr/001-custom-mock-server.md) | Custom Mock Server and Validation Strategy | Accepted |
+| [002](docs/adr/002-mock-server-selection.md) | Mock Strategy: Custom Python vs. MockServer | Accepted |
+| [003](docs/adr/003-failure-path-enumeration.md) | Failure Path Enumeration | Accepted |
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
