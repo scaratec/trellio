@@ -1,6 +1,6 @@
 # Trellio - Async Trello API Client for Python
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 **Trellio** is a production-ready, asynchronous Python client for the Trello API, built on `httpx` and `pydantic`. Designed for use in long-running services like MCP servers, it provides retry with backoff, request timeouts, structured logging, and full CRUD coverage across 10 Trello resource types.
@@ -134,4 +134,4 @@ PYTHONPATH=src pytest tests/validation/
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
