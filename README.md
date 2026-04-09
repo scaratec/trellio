@@ -124,6 +124,29 @@ PYTHONPATH=src python -m behave
 PYTHONPATH=src pytest tests/validation/
 ```
 
+## Quick Start with Make
+
+For a fresh checkout, the simplest path is:
+
+```bash
+make test
+```
+
+This will:
+- create `.venv` if it does not exist
+- install dependencies if they are not available yet
+- run the validation tests with `pytest`
+- run the BDD suite with `behave`
+
+You can also use:
+
+```bash
+make
+make deps
+make test-pytest
+make test-behave
+```
+
 ## Architecture Decisions
 
 | ADR | Title | Status |
