@@ -3,14 +3,42 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "trellio"
+name = "trellio-client"
 version = "1.0.0"
 description = "Async Trello API client for Python"
 requires-python = ">=3.10"
 license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "scaratec", url = "https://github.com/scaratec"},
+]
+keywords = ["trello", "api", "async", "httpx", "pydantic"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Framework :: AsyncIO",
+]
 dependencies = [
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/scaratec/trellio"
+Repository = "https://github.com/scaratec/trellio"
+Issues = "https://github.com/scaratec/trellio/issues"
+
+[project.optional-dependencies]
+dev = [
+    "behave>=1.2.6",
+    "pytest",
+    "pytest-asyncio",
 ]
 
 [tool.setuptools.packages.find]
