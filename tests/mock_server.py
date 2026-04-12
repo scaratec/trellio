@@ -82,7 +82,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
 
     def _get_query_params(self):
         parsed_path = urllib.parse.urlparse(self.path)
-        return urllib.parse.parse_qs(parsed_path.query)
+        return urllib.parse.parse_qs(parsed_path.query, keep_blank_values=True)
 
     def _is_authenticated(self, query_params):
         key = query_params.get('key', [None])[0]
@@ -615,6 +615,13 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._send_not_found()
             return
         if len(parts) == 4:
+            if "idLabels" in update_data:
+                raw = update_data.pop("idLabels")
+                label_ids = [l.strip() for l in raw.split(",") if l.strip()] if raw else []
+                mock_data.cards[card_id]["idLabels"] = label_ids
+                mock_data.cards[card_id]["labels"] = [
+                    mock_data.labels[lid] for lid in label_ids if lid in mock_data.labels
+                ]
             mock_data.cards[card_id].update(update_data)
             self._send_json(mock_data.cards[card_id])
         elif len(parts) == 5:

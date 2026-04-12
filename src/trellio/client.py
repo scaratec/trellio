@@ -147,10 +147,16 @@ class TrellioClient:
         await self._authenticated_request("DELETE", f"/1/cards/{card_id}")
 
     async def add_label_to_card(self, card_id: str, label_id: str):
-        await self._authenticated_request("POST", f"/1/cards/{card_id}/idLabels", data={"value": label_id})
+        card = await self.get_card(card_id)
+        labels = list(card.id_labels)
+        if label_id not in labels:
+            labels.append(label_id)
+        await self.update_card(card_id, idLabels=",".join(labels))
 
     async def remove_label_from_card(self, card_id: str, label_id: str):
-        await self._authenticated_request("DELETE", f"/1/cards/{card_id}/idLabels/{label_id}")
+        card = await self.get_card(card_id)
+        labels = [lid for lid in card.id_labels if lid != label_id]
+        await self.update_card(card_id, idLabels=",".join(labels))
 
     # --- Labels ---
 
