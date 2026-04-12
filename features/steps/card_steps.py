@@ -140,3 +140,51 @@ def step_verify_card_deleted(context):
         assert False, "Card still exists after deletion"
     except TrelloAPIError as e:
         assert e.status_code == 404
+
+
+# --- Label operations on cards ---
+
+@given('another label exists on the board with name "{name}" and color "{color}"')
+def step_create_another_label(context, name, color):
+    context.another_label = run_async(
+        context.client.create_label(name, color, context.existing_board.id))
+
+
+@given('the label is attached to the card')
+def step_attach_label_to_card(context):
+    run_async(context.client.add_label_to_card(
+        context.existing_card.id, context.existing_label.id))
+
+
+@when('I add the label to the card')
+def step_add_label_to_card(context):
+    run_async(context.client.add_label_to_card(
+        context.existing_card.id, context.existing_label.id))
+
+
+@when('I add both labels to the card')
+def step_add_both_labels(context):
+    run_async(context.client.add_label_to_card(
+        context.existing_card.id, context.existing_label.id))
+    run_async(context.client.add_label_to_card(
+        context.existing_card.id, context.another_label.id))
+
+
+@when('I remove the label from the card')
+def step_remove_label_from_card(context):
+    run_async(context.client.remove_label_from_card(
+        context.existing_card.id, context.existing_label.id))
+
+
+@then('retrieving the card should show the label is attached')
+def step_verify_label_on_card(context):
+    card = run_async(context.client.get_card(context.existing_card.id))
+    assert context.existing_label.id in card.id_labels, (
+        f"Label {context.existing_label.id} not in {card.id_labels}")
+
+
+@then('retrieving the card should show {count:d} labels attached')
+def step_verify_label_count_on_card(context, count):
+    card = run_async(context.client.get_card(context.existing_card.id))
+    assert len(card.id_labels) == count, (
+        f"Expected {count} labels, got {len(card.id_labels)}: {card.id_labels}")

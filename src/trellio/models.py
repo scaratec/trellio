@@ -81,5 +81,6 @@ class TrelloCard(BaseModel):
     url: Optional[str] = None
     pos: Optional[float | int | str] = None
     short_url: Optional[str] = Field(default=None, alias="shortUrl")
+    id_labels: List[str] = Field(default_factory=list, alias="idLabels")
     due: Optional[str] = None
     due_complete: bool = Field(default=False, alias="dueComplete")

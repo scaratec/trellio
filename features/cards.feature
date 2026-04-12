@@ -82,6 +82,42 @@ Feature: Trello Cards Management
     When I delete a card with ID "nonexistent_card_123"
     Then the request should fail with a 404 error
 
+  # --- add_label_to_card / remove_label_from_card ---
+  # Persistence validation via independent channel (§4.3)
+  # Verify labels are actually present on the card via get_card.
+
+  Scenario Outline: Add a label to a card and verify via get_card
+    Given a card exists in "To Do" with name "<card_name>"
+    And a label exists on the board with name "<label_name>" and color "<color>"
+    When I add the label to the card
+    Then retrieving the card should show the label is attached
+
+    Examples:
+      | card_name    | label_name | color |
+      | Label Task A | Urgent     | red   |
+      | Label Task B | Feature    | green |
+
+  # Anti-hardcoding (§2.3): two different labels prove accumulation
+
+  Scenario: Add two labels to the same card and verify both persist
+    Given a card exists in "To Do" with name "Multi-Label Card"
+    And a label exists on the board with name "Bug" and color "red"
+    And another label exists on the board with name "P1" and color "orange"
+    When I add both labels to the card
+    Then retrieving the card should show 2 labels attached
+
+  Scenario Outline: Remove a label from a card and verify via get_card
+    Given a card exists in "To Do" with name "<card_name>"
+    And a label exists on the board with name "<label_name>" and color "<color>"
+    And the label is attached to the card
+    When I remove the label from the card
+    Then retrieving the card should show 0 labels attached
+
+    Examples:
+      | card_name      | label_name | color  |
+      | Unlabel Task A | Stale      | yellow |
+      | Unlabel Task B | Done       | blue   |
+
   Scenario: Server returns 429 rate limit error on card creation
     Given the server will respond with a 429 error "Rate limit exceeded"
     When I create a card with name "Rate Limited Card" in list ID "any_list_id"

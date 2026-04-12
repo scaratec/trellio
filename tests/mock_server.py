@@ -352,6 +352,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._create_comment(parts[3], params, post_data)
         elif len(parts) == 5 and parts[1] == "1" and parts[2] == "cards" and parts[4] == "attachments":
             self._create_attachment(parts[3], params, post_data)
+        elif len(parts) == 5 and parts[1] == "1" and parts[2] == "cards" and parts[4] == "idLabels":
+            self._add_label_to_card(parts[3], params, post_data)
         else:
             self._send_not_found()
 
@@ -509,6 +511,24 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         mock_data.comments[new_id] = new_comment
         self._send_json(new_comment)
 
+    def _add_label_to_card(self, card_id, params, post_data):
+        if card_id not in mock_data.cards:
+            self._send_not_found()
+            return
+        # Trello API requires 'value' in POST body, not query params
+        label_id = post_data.get('value')
+        if not label_id:
+            self._send_bad_request("value")
+            return
+        if label_id not in mock_data.labels:
+            self._send_not_found()
+            return
+        card = mock_data.cards[card_id]
+        if label_id not in card["idLabels"]:
+            card["idLabels"].append(label_id)
+            card["labels"].append(mock_data.labels[label_id])
+        self._send_json(card["idLabels"])
+
     def _create_attachment(self, card_id, params, post_data):
         if card_id not in mock_data.cards:
             self._send_not_found()
@@ -660,6 +680,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._delete_board(path)
         elif path.startswith("/1/cards/") and len(parts) == 6 and parts[4] == "attachments":
             self._delete_attachment(parts[3], parts[5])
+        elif path.startswith("/1/cards/") and len(parts) == 6 and parts[4] == "idLabels":
+            self._remove_label_from_card(parts[3], parts[5])
         elif path.startswith("/1/cards/"):
             self._delete_card(path)
         elif path.startswith("/1/labels/"):
@@ -734,6 +756,18 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"_value": None})
         else:
             self._send_not_found()
+
+    def _remove_label_from_card(self, card_id, label_id):
+        if card_id not in mock_data.cards:
+            self._send_not_found()
+            return
+        card = mock_data.cards[card_id]
+        if label_id not in card["idLabels"]:
+            self._send_not_found()
+            return
+        card["idLabels"].remove(label_id)
+        card["labels"] = [l for l in card["labels"] if l["id"] != label_id]
+        self._send_json({"_value": None})
 
     def _delete_attachment(self, card_id, attachment_id):
         if card_id not in mock_data.cards:
