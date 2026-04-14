@@ -118,6 +118,10 @@ class TrellioClient:
         data = await self._authenticated_request("POST", "/1/lists", params=params)
         return TrelloList(**data)
 
+    async def get_list(self, list_id: str) -> TrelloList:
+        data = await self._authenticated_request("GET", f"/1/lists/{list_id}")
+        return TrelloList(**data)
+
     async def list_lists(self, board_id: str) -> List[TrelloList]:
         data = await self._authenticated_request("GET", f"/1/boards/{board_id}/lists")
         return [TrelloList(**lst) for lst in data]
