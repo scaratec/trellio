@@ -254,7 +254,7 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             return
         filter_value = params.get('filter', [None])[0]
         if filter_value == "commentCard":
-            card_comments = [c for c in mock_data.comments.values() if c["idCard"] == card_id]
+            card_comments = [c for c in mock_data.comments.values() if c["data"]["card"]["id"] == card_id]
             self._send_json(card_comments)
         else:
             self._send_json([])
@@ -501,12 +501,21 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._send_bad_request("text")
             return
         new_id = str(uuid.uuid4())
+        card = mock_data.cards[card_id]
         new_comment = {
             "id": new_id,
-            "text": text,
-            "date": "2026-01-01T00:00:00.000Z",
             "idMemberCreator": "mock_member_id",
-            "idCard": card_id,
+            "type": "commentCard",
+            "date": "2026-01-01T00:00:00.000Z",
+            "data": {
+                "text": text,
+                "card": {"id": card_id, "name": card["name"]},
+                "board": {"id": card.get("idBoard", "mock_board_id")},
+            },
+            "memberCreator": {
+                "id": "mock_member_id",
+                "username": "mock_user",
+            },
         }
         mock_data.comments[new_id] = new_comment
         self._send_json(new_comment)
@@ -655,7 +664,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     def _update_comment(self, path, update_data):
         comment_id = path.split("/")[-1]
         if comment_id in mock_data.comments:
-            mock_data.comments[comment_id].update(update_data)
+            if "text" in update_data:
+                mock_data.comments[comment_id]["data"]["text"] = update_data["text"]
             self._send_json(mock_data.comments[comment_id])
         else:
             self._send_not_found()

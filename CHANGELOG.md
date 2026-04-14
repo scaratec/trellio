@@ -8,6 +8,20 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-04-14
+
+### Fixed
+- `add_comment`, `list_comments`, and `update_comment` now
+  correctly parse Trello Action objects (extract `data.text`
+  and `memberCreator.id` instead of expecting flat top-level
+  fields), fixing Pydantic validation errors against the real
+  Trello API
+- Mock server comment endpoints now return realistic Action
+  object structures matching the real Trello API response
+  format
+
+[1.2.1]: https://github.com/scaratec/trellio/compare/v1.2.0...v1.2.1
+
 ## [1.0.0] - 2026-04-08
 
 ### Added

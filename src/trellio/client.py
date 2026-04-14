@@ -209,15 +209,33 @@ class TrellioClient:
 
     async def add_comment(self, card_id: str, text: str) -> TrelloComment:
         data = await self._authenticated_request("POST", f"/1/cards/{card_id}/actions/comments", params={"text": text})
-        return TrelloComment(**data)
+        return TrelloComment(
+            id=data["id"],
+            text=data["data"]["text"],
+            date=data.get("date"),
+            idMemberCreator=data.get("memberCreator", {}).get("id"),
+        )
 
     async def list_comments(self, card_id: str) -> List[TrelloComment]:
         data = await self._authenticated_request("GET", f"/1/cards/{card_id}/actions", params={"filter": "commentCard"})
-        return [TrelloComment(**comment) for comment in data]
+        return [
+            TrelloComment(
+                id=action["id"],
+                text=action["data"]["text"],
+                date=action.get("date"),
+                idMemberCreator=action.get("memberCreator", {}).get("id"),
+            )
+            for action in data
+        ]
 
     async def update_comment(self, comment_id: str, text: str) -> TrelloComment:
         data = await self._authenticated_request("PUT", f"/1/actions/{comment_id}", params={"text": text})
-        return TrelloComment(**data)
+        return TrelloComment(
+            id=data["id"],
+            text=data["data"]["text"],
+            date=data.get("date"),
+            idMemberCreator=data.get("memberCreator", {}).get("id"),
+        )
 
     async def delete_comment(self, comment_id: str):
         await self._authenticated_request("DELETE", f"/1/actions/{comment_id}")
