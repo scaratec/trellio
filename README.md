@@ -88,7 +88,7 @@ This project follows strict **Behavior-Driven Development (BDD)** where Gherkin 
 
 ## Test Coverage
 
-The BDD suite covers **18 features, 140 scenarios, 1017 steps**:
+The BDD suite covers **19 features, 144 scenarios, 1048 steps**:
 
 | Feature             | Scenarios |
 |---------------------|-----------|
@@ -110,7 +110,8 @@ The BDD suite covers **18 features, 140 scenarios, 1017 steps**:
 | Timeout             | 2         |
 | Search              | 4         |
 | Logging             | 3         |
-| **Total**           | **140**   |
+| Large Payload       | 4         |
+| **Total**           | **144**   |
 
 ## Development Setup
 

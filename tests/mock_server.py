@@ -61,7 +61,19 @@ class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 
+MAX_URI_LENGTH = 8192  # CloudFront enforces ~8 KiB URI limit
+
+
 class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
+
+    def _check_uri_length(self):
+        if len(self.path) > MAX_URI_LENGTH:
+            self.send_response(414)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(b"<H1>414 ERROR</H1><H2>URI Too Long</H2>")
+            return True
+        return False
 
     def _send_json(self, data, status=200, extra_headers=None):
         self.send_response(status)
@@ -178,6 +190,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- GET ---
 
     def do_GET(self):
+        if self._check_uri_length():
+            return
         self._apply_forced_delay()
         if self._has_forced_error():
             return
@@ -396,6 +410,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- POST ---
 
     def do_POST(self):
+        if self._check_uri_length():
+            return
         self._apply_forced_delay()
         if self._has_forced_error():
             return
@@ -665,6 +681,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- PUT ---
 
     def do_PUT(self):
+        if self._check_uri_length():
+            return
         self._apply_forced_delay()
         if self._has_forced_error():
             return
@@ -778,6 +796,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     # --- DELETE ---
 
     def do_DELETE(self):
+        if self._check_uri_length():
+            return
         self._apply_forced_delay()
         if self._has_forced_error():
             return

@@ -31,13 +31,18 @@ class TrellioClient:
         self._client = httpx.AsyncClient(timeout=timeout)
 
     async def _authenticated_request(self, method: str, path: str, **kwargs):
-        params = kwargs.get("params", {})
-        params["key"] = self.api_key
-        params["token"] = self.token
-        kwargs["params"] = params
+        params = kwargs.pop("params", {})
+        auth_params = {"key": self.api_key, "token": self.token}
+
+        if method in ("POST", "PUT") and "files" not in kwargs:
+            kwargs["params"] = auth_params
+            if params:
+                kwargs["json"] = params
+        else:
+            params.update(auth_params)
+            kwargs["params"] = params
 
         url = f"{self.base_url}{path}"
-        last_error = None
 
         for attempt in range(self.max_retries + 1):
             start = time.monotonic()
