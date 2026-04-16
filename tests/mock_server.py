@@ -40,6 +40,7 @@ class TrelloMockData:
         self.members = {}
         self.board_members = {}
         self.attachments = {}
+        self.attachment_content = {}
         self.webhooks = {}
         self.forced_error = None
         self.forced_delay = None
@@ -109,15 +110,70 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         parsed_path = urllib.parse.urlparse(self.path)
         return parsed_path.path.rstrip('/')
 
+    def _handle_mock_file_download(self, path):
+        attachment_id = path.split("/")[-1]
+        if attachment_id in mock_data.attachment_content:
+            content = mock_data.attachment_content[attachment_id]
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/octet-stream')
+            self.send_header('Content-Length', str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+        else:
+            self._send_not_found()
+
     def _read_body(self):
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length == 0:
             return {}
+        content_type = self.headers.get('Content-Type', '')
+        if content_type.startswith('multipart/form-data'):
+            return self._read_multipart(content_length, content_type)
         body = self.rfile.read(content_length).decode('utf-8')
         try:
             return json.loads(body)
         except json.JSONDecodeError:
             return {k: v[0] for k, v in urllib.parse.parse_qs(body).items()}
+
+    def _read_multipart(self, content_length, content_type):
+        body = self.rfile.read(content_length)
+        boundary = None
+        for part in content_type.split(';'):
+            part = part.strip()
+            if part.startswith('boundary='):
+                boundary = part[len('boundary='):]
+                break
+        if not boundary:
+            return {}
+
+        fields = {}
+        files = {}
+        parts = body.split(f'--{boundary}'.encode())
+        for part in parts:
+            if not part or part.strip() in (b'', b'--', b'--\r\n'):
+                continue
+            if b'\r\n\r\n' not in part:
+                continue
+            header_section, body_section = part.split(b'\r\n\r\n', 1)
+            if body_section.endswith(b'\r\n'):
+                body_section = body_section[:-2]
+            headers_text = header_section.decode('utf-8', errors='replace')
+            name = None
+            filename = None
+            for line in headers_text.split('\r\n'):
+                if 'Content-Disposition' in line:
+                    for param in line.split(';'):
+                        param = param.strip()
+                        if param.startswith('name='):
+                            name = param[5:].strip('"')
+                        elif param.startswith('filename='):
+                            filename = param[9:].strip('"')
+            if filename:
+                files[name] = {"filename": filename, "bytes": len(body_section), "content": body_section}
+            elif name:
+                fields[name] = body_section.decode('utf-8', errors='replace')
+        fields['_files'] = files
+        return fields
 
     # --- GET ---
 
@@ -125,11 +181,15 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         self._apply_forced_delay()
         if self._has_forced_error():
             return
+        path = self._parse_path()
+        # Mock file download route (no auth — simulates CDN URL)
+        if path.startswith("/mock-files/"):
+            self._handle_mock_file_download(path)
+            return
         params = self._get_query_params()
         if not self._is_authenticated(params):
             self._send_invalid_key()
             return
-        path = self._parse_path()
         self._route_get(path, params)
 
     def _route_get(self, path, params=None):
@@ -228,6 +288,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             self._handle_get_card_comments(card_id, params or {})
         elif len(parts) == 5 and parts[4] == "attachments":
             self._handle_get_card_attachments(card_id)
+        elif len(parts) == 6 and parts[4] == "attachments":
+            self._handle_get_single_attachment(card_id, parts[5])
         elif len(parts) == 5 and parts[4] == "checklists":
             self._handle_get_card_checklists(card_id)
         else:
@@ -265,6 +327,19 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             return
         card_attachments = [a for a in mock_data.attachments.values() if a["idCard"] == card_id]
         self._send_json(card_attachments)
+
+    def _handle_get_single_attachment(self, card_id, attachment_id):
+        if card_id not in mock_data.cards:
+            self._send_not_found()
+            return
+        if attachment_id not in mock_data.attachments:
+            self._send_not_found()
+            return
+        att = mock_data.attachments[attachment_id]
+        if att["idCard"] != card_id:
+            self._send_not_found()
+            return
+        self._send_json(att)
 
     def _handle_get_checklist(self, path):
         parts = path.split("/")
@@ -542,17 +617,26 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         if card_id not in mock_data.cards:
             self._send_not_found()
             return
-        url = post_data.get('url') or params.get('url', [None])[0]
-        if not url:
-            self._send_bad_request("url")
-            return
-        name = post_data.get('name') or params.get('name', [None])[0] or url
+        files = post_data.get('_files', {})
         new_id = str(uuid.uuid4())
+        if 'file' in files:
+            file_info = files['file']
+            name = params.get('name', [None])[0] or post_data.get('name') or file_info['filename']
+            url = f"http://127.0.0.1:{PORT}/mock-files/{new_id}"
+            file_bytes = file_info['bytes']
+            mock_data.attachment_content[new_id] = file_info.get("content", b"")
+        else:
+            url = post_data.get('url') or params.get('url', [None])[0]
+            if not url:
+                self._send_bad_request("url")
+                return
+            name = post_data.get('name') or params.get('name', [None])[0] or url
+            file_bytes = 0
         new_attachment = {
             "id": new_id,
             "name": name,
             "url": url,
-            "bytes": 0,
+            "bytes": file_bytes,
             "date": "2026-01-01T00:00:00.000Z",
             "idMember": "mock_member_id",
             "idCard": card_id,

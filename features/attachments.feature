@@ -36,6 +36,27 @@ Feature: Trello Attachments Management
     When I delete the attachment
     Then listing attachments on the card should not include "Temporary"
 
+  # --- get_attachment ---
+  # Anti-hardcoding (§2.3): Two different attachments prove
+  # that get returns the correct individual metadata.
+
+  Scenario Outline: Get a single attachment by ID
+    Given an attachment exists on the card with URL "<url>" and name "<name>"
+    When I get the attachment by its ID
+    Then the retrieved attachment name should be "<name>"
+    And the retrieved attachment URL should be "<url>"
+
+    Examples:
+      | url                            | name        |
+      | https://example.com/design.pdf | Design Doc  |
+      | https://github.com/org/repo    | Source Code |
+
+  Scenario: Fail to get a non-existent attachment
+    When I get attachment with ID "nonexistent_att_123" from the card
+    Then the request should fail with a 404 error
+
+  # --- Error paths ---
+
   Scenario: Fail to attach without a URL
     When I attempt to create an attachment without a URL on the card
     Then the request should fail with a 400 error

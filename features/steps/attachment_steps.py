@@ -86,3 +86,26 @@ def step_assert_attachment_count(context, count):
 def step_assert_attachment_in_list(context, name):
     names = [a.name for a in context.attachments]
     assert name in names
+
+
+@when('I get the attachment by its ID')
+def step_get_attachment_by_id(context):
+    context.retrieved_attachment = run_async(
+        context.client.get_attachment(context.existing_card.id, context.existing_attachment.id))
+
+
+@when('I get attachment with ID "{attachment_id}" from the card')
+def step_get_attachment_with_explicit_id(context, attachment_id):
+    capture_api_error(context, context.client.get_attachment(context.existing_card.id, attachment_id))
+
+
+@then('the retrieved attachment name should be "{name}"')
+def step_assert_retrieved_attachment_name(context, name):
+    assert context.retrieved_attachment.name == name, (
+        f"Expected name '{name}', got '{context.retrieved_attachment.name}'")
+
+
+@then('the retrieved attachment URL should be "{url}"')
+def step_assert_retrieved_attachment_url(context, url):
+    assert context.retrieved_attachment.url == url, (
+        f"Expected URL '{url}', got '{context.retrieved_attachment.url}'")

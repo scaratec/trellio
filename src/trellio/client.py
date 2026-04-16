@@ -260,12 +260,64 @@ class TrellioClient:
         data = await self._authenticated_request("GET", f"/1/cards/{card_id}/attachments")
         return [TrelloAttachment(**att) for att in data]
 
+    async def upload_attachment(self, card_id: str, file_path: str, name: Optional[str] = None) -> TrelloAttachment:
+        import mimetypes
+        from pathlib import Path
+
+        import os
+
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        if not path.is_file():
+            raise ValueError(f"Not a regular file: {file_path}")
+        if not os.access(file_path, os.R_OK):
+            raise PermissionError(f"File is not readable: {file_path}")
+
+        mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+        file_name = name or path.name
+        params = {}
+        if name:
+            params["name"] = name
+
+        with open(path, "rb") as f:
+            data = await self._authenticated_request(
+                "POST", f"/1/cards/{card_id}/attachments",
+                params=params,
+                files={"file": (file_name, f, mime_type)},
+            )
+        return TrelloAttachment(**data)
+
     async def create_attachment(self, card_id: str, url: str, name: Optional[str] = None) -> TrelloAttachment:
         params = {"url": url}
         if name:
             params["name"] = name
         data = await self._authenticated_request("POST", f"/1/cards/{card_id}/attachments", params=params)
         return TrelloAttachment(**data)
+
+    async def get_attachment(self, card_id: str, attachment_id: str) -> TrelloAttachment:
+        data = await self._authenticated_request("GET", f"/1/cards/{card_id}/attachments/{attachment_id}")
+        return TrelloAttachment(**data)
+
+    async def download_attachment(self, card_id: str, attachment_id: str, target_path: str) -> TrelloAttachment:
+        from pathlib import Path
+
+        path = Path(target_path)
+        if path.is_dir():
+            raise ValueError(f"Target path is a directory: {target_path}")
+        if not path.parent.exists():
+            raise FileNotFoundError(f"Target directory does not exist: {path.parent}")
+
+        att = await self.get_attachment(card_id=card_id, attachment_id=attachment_id)
+
+        response = await self._client.get(att.url)
+        if response.status_code != 200:
+            raise TrelloAPIError(response.status_code, f"Failed to download attachment: {response.text}")
+
+        with open(path, "wb") as f:
+            f.write(response.content)
+
+        return att
 
     async def delete_attachment(self, card_id: str, attachment_id: str):
         await self._authenticated_request("DELETE", f"/1/cards/{card_id}/attachments/{attachment_id}")

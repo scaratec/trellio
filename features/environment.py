@@ -35,3 +35,10 @@ def before_all(context):
 def before_scenario(context, scenario):
     # Ensure a clean state for every scenario
     mock_data.reset()
+
+
+def after_scenario(context, scenario):
+    # Clean up temporary files created during the scenario
+    if hasattr(context, '_temp_dir'):
+        import shutil
+        shutil.rmtree(context._temp_dir, ignore_errors=True)
