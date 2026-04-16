@@ -82,5 +82,10 @@ class TrelloCard(BaseModel):
     pos: Optional[float | int | str] = None
     short_url: Optional[str] = Field(default=None, alias="shortUrl")
     id_labels: List[str] = Field(default_factory=list, alias="idLabels")
+    id_members: List[str] = Field(default_factory=list, alias="idMembers")
+    id_checklists: List[str] = Field(default_factory=list, alias="idChecklists")
     due: Optional[str] = None
     due_complete: bool = Field(default=False, alias="dueComplete")
+    date_last_activity: Optional[str] = Field(default=None, alias="dateLastActivity")
+    badges: Optional[dict] = None
+    labels: Optional[list] = None

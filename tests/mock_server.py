@@ -682,6 +682,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     def _route_put(self, path, update_data):
         if path.startswith("/1/boards/"):
             self._update_board(path, update_data)
+        elif path.startswith("/1/lists/"):
+            self._update_list(path, update_data)
         elif path.startswith("/1/cards/"):
             self._update_card(path, update_data)
         elif path.startswith("/1/labels/"):
@@ -698,6 +700,17 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         if board_id in mock_data.boards:
             mock_data.boards[board_id].update(update_data)
             self._send_json(mock_data.boards[board_id])
+        else:
+            self._send_not_found()
+
+    def _update_list(self, path, update_data):
+        list_id = path.split("/")[-1]
+        if list_id in mock_data.lists:
+            if "closed" in update_data:
+                val = update_data["closed"]
+                update_data["closed"] = val if isinstance(val, bool) else str(val).lower() == "true"
+            mock_data.lists[list_id].update(update_data)
+            self._send_json(mock_data.lists[list_id])
         else:
             self._send_not_found()
 

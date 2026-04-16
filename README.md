@@ -16,19 +16,19 @@
 - **Typed exceptions** -- `TrelloAPIError(status_code, message)` for all API errors
 - **Pydantic models** -- type-safe response objects with alias support for Trello's camelCase API
 
-### Resources (38 client methods)
+### Resources (46 client methods)
 
 | Resource    | Methods |
 |-------------|---------|
 | Auth        | `get_me` |
 | Boards      | `list_boards`, `list_all_boards`, `create_board`, `get_board`, `update_board`, `delete_board` |
-| Lists       | `list_lists`, `create_list` |
-| Cards       | `list_cards`, `create_card`, `get_card`, `update_card`, `delete_card` |
+| Lists       | `list_lists`, `create_list`, `get_list`, `update_list` |
+| Cards       | `list_cards`, `create_card`, `get_card`, `update_card`, `delete_card`, `add_label_to_card`, `remove_label_from_card` |
 | Labels      | `list_board_labels`, `create_label`, `update_label`, `delete_label` |
 | Checklists  | `list_card_checklists`, `create_checklist`, `get_checklist`, `delete_checklist`, `create_check_item`, `update_check_item`, `delete_check_item` |
 | Comments    | `add_comment`, `list_comments`, `update_comment`, `delete_comment` |
 | Members     | `list_board_members`, `get_member` |
-| Attachments | `list_attachments`, `create_attachment`, `delete_attachment` |
+| Attachments | `list_attachments`, `create_attachment`, `get_attachment`, `upload_attachment`, `download_attachment`, `delete_attachment` |
 | Webhooks    | `create_webhook`, `list_webhooks`, `get_webhook`, `update_webhook`, `delete_webhook` |
 | Search      | `search` |
 
@@ -88,27 +88,29 @@ This project follows strict **Behavior-Driven Development (BDD)** where Gherkin 
 
 ## Test Coverage
 
-The BDD suite covers **16 features, 117 scenarios, 826 steps**:
+The BDD suite covers **18 features, 140 scenarios, 1017 steps**:
 
-| Feature        | Scenarios |
-|----------------|-----------|
-| Authentication | 6         |
-| Boards         | 11        |
-| Cards          | 13        |
-| Lists          | 6         |
-| Labels         | 9         |
-| Checklists     | 13        |
-| Comments       | 9         |
-| Members        | 4         |
-| Attachments    | 7         |
-| Webhooks       | 13        |
-| Retry          | 7         |
-| Pagination     | 4         |
-| Connection     | 2         |
-| Timeout        | 2         |
-| Search         | 4         |
-| Logging        | 3         |
-| **Total**      | **117**   |
+| Feature             | Scenarios |
+|---------------------|-----------|
+| Authentication      | 6         |
+| Boards              | 11        |
+| Cards               | 13        |
+| Lists               | 10        |
+| Labels              | 9         |
+| Checklists          | 13        |
+| Comments            | 9         |
+| Members             | 4         |
+| Attachments         | 10        |
+| Upload Attachment   | 6         |
+| Download Attachment | 5         |
+| Webhooks            | 13        |
+| Retry               | 7         |
+| Pagination          | 4         |
+| Connection          | 2         |
+| Timeout             | 2         |
+| Search              | 4         |
+| Logging             | 3         |
+| **Total**           | **140**   |
 
 ## Development Setup
 

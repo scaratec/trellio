@@ -28,6 +28,32 @@ Feature: Trello Lists Management
     And one of the lists should have name "Backlog"
     And one of the lists should have name "Done"
 
+  # --- update_list ---
+  # Anti-hardcoding (§2.3): Two variants prove update generalises.
+  # Persistence validation (§4.3): Verify via get_list.
+
+  Scenario Outline: Update a list name
+    Given a list was created on the board with name "<old_name>"
+    When I update the list name to "<new_name>"
+    Then the updated list name should be "<new_name>"
+    And retrieving the list by ID should show name "<new_name>"
+
+    Examples:
+      | old_name    | new_name     |
+      | To Do       | Renamed List |
+      | In Progress | Done Done    |
+
+  Scenario: Archive a list
+    Given a list was created on the board with name "Temporary"
+    When I archive the list
+    Then the list should be archived
+
+  # --- Error paths ---
+
+  Scenario: Fail to update a non-existent list
+    When I attempt to update list with ID "nonexistent_list_123" to name "Ghost"
+    Then the request should fail with a 404 error
+
   Scenario: Fail to create a list without a name
     When I attempt to create a list without a name on the board
     Then the request should fail with a 400 error

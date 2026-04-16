@@ -50,7 +50,7 @@ class TrellioClient:
             duration_ms = (time.monotonic() - start) * 1000
             logger.debug("%s %s %d (%.0fms)", method, path, response.status_code, duration_ms)
 
-            if response.status_code == 200:
+            if 200 <= response.status_code < 300:
                 return response.json()
 
             if response.status_code not in RETRYABLE_STATUS_CODES or attempt == self.max_retries:
@@ -64,11 +64,8 @@ class TrellioClient:
                 delay = self.initial_delay * (self.backoff_factor ** attempt)
             logger.warning("Retry %d/%d for %s %s (status %d, delay %.1fs)",
                            attempt + 1, self.max_retries, method, path, response.status_code, delay)
-            last_error = TrelloAPIError(response.status_code, response.text)
             if delay > 0:
                 await asyncio.sleep(delay)
-
-        raise last_error
 
     async def get_me(self) -> TrelloMember:
         data = await self._authenticated_request("GET", "/1/members/me")
@@ -122,6 +119,10 @@ class TrellioClient:
         data = await self._authenticated_request("GET", f"/1/lists/{list_id}")
         return TrelloList(**data)
 
+    async def update_list(self, list_id: str, **kwargs) -> TrelloList:
+        data = await self._authenticated_request("PUT", f"/1/lists/{list_id}", params=kwargs)
+        return TrelloList(**data)
+
     async def list_lists(self, board_id: str) -> List[TrelloList]:
         data = await self._authenticated_request("GET", f"/1/boards/{board_id}/lists")
         return [TrelloList(**lst) for lst in data]
@@ -150,14 +151,14 @@ class TrellioClient:
     async def delete_card(self, card_id: str):
         await self._authenticated_request("DELETE", f"/1/cards/{card_id}")
 
-    async def add_label_to_card(self, card_id: str, label_id: str):
+    async def add_label_to_card(self, card_id: str, label_id: str) -> None:
         card = await self.get_card(card_id)
         labels = list(card.id_labels)
         if label_id not in labels:
             labels.append(label_id)
         await self.update_card(card_id, idLabels=",".join(labels))
 
-    async def remove_label_from_card(self, card_id: str, label_id: str):
+    async def remove_label_from_card(self, card_id: str, label_id: str) -> None:
         card = await self.get_card(card_id)
         labels = [lid for lid in card.id_labels if lid != label_id]
         await self.update_card(card_id, idLabels=",".join(labels))
