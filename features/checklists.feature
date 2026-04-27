@@ -53,6 +53,17 @@ Feature: Trello Checklists Management
       | Write unit tests |
       | Update docs      |
 
+  Scenario Outline: Add a check item with a position
+    Given a checklist exists on the card with name "Position Checklist"
+    When I add a check item with name "<item_name>" and position "<pos>"
+    Then the check item should be created successfully
+    And the check item name should be "<item_name>"
+
+    Examples:
+      | item_name      | pos    |
+      | Top item       | top    |
+      | Bottom item    | bottom |
+
   Scenario Outline: Update check item state
     Given a checklist exists on the card with name "State Checklist"
     And a check item exists in the checklist with name "Toggle Item"
@@ -63,6 +74,28 @@ Feature: Trello Checklists Management
       | new_state  |
       | complete   |
       | incomplete |
+
+  Scenario Outline: Update check item name
+    Given a checklist exists on the card with name "Rename Checklist"
+    And a check item exists in the checklist with name "Original Name"
+    When I update the check item name to "<new_name>"
+    Then the check item name should now be "<new_name>"
+
+    Examples:
+      | new_name           |
+      | Renamed item alpha |
+      | Renamed item beta  |
+
+  Scenario Outline: Update check item position
+    Given a checklist exists on the card with name "Reorder Checklist"
+    And a check item exists in the checklist with name "Movable Item"
+    When I update the check item position to "<pos>"
+    Then the check item should still have name "Movable Item"
+
+    Examples:
+      | pos    |
+      | top    |
+      | bottom |
 
   Scenario: Delete a check item
     Given a checklist exists on the card with name "Delete Item Checklist"

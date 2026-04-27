@@ -204,12 +204,32 @@ class TrellioClient:
     async def delete_checklist(self, checklist_id: str):
         await self._authenticated_request("DELETE", f"/1/checklists/{checklist_id}")
 
-    async def create_check_item(self, checklist_id: str, name: str) -> TrelloCheckItem:
-        data = await self._authenticated_request("POST", f"/1/checklists/{checklist_id}/checkItems", params={"name": name})
+    async def create_check_item(
+        self, checklist_id: str, name: str,
+        pos: Optional[Union[str, float]] = None,
+    ) -> TrelloCheckItem:
+        params = {"name": name}
+        if pos is not None:
+            params["pos"] = pos
+        data = await self._authenticated_request("POST", f"/1/checklists/{checklist_id}/checkItems", params=params)
         return TrelloCheckItem(**data)
 
-    async def update_check_item(self, card_id: str, check_item_id: str, state: str) -> TrelloCheckItem:
-        data = await self._authenticated_request("PUT", f"/1/cards/{card_id}/checkItem/{check_item_id}", params={"state": state})
+    async def update_check_item(
+        self, card_id: str, check_item_id: str,
+        state: Optional[str] = None,
+        name: Optional[str] = None,
+        pos: Optional[Union[str, float]] = None,
+    ) -> TrelloCheckItem:
+        params = {}
+        if state is not None:
+            params["state"] = state
+        if name is not None:
+            params["name"] = name
+        if pos is not None:
+            params["pos"] = pos
+        if not params:
+            raise ValueError("update_check_item requires at least one of state, name, or pos")
+        data = await self._authenticated_request("PUT", f"/1/cards/{card_id}/checkItem/{check_item_id}", params=params)
         return TrelloCheckItem(**data)
 
     async def delete_check_item(self, checklist_id: str, check_item_id: str):
@@ -354,10 +374,17 @@ class TrellioClient:
 
     # --- Search ---
 
-    async def search(self, query: str, model_types: Optional[str] = None, limit: int = 10) -> TrelloSearchResult:
+    async def search(
+        self, query: str,
+        model_types: Optional[str] = None,
+        limit: int = 10,
+        id_boards: Optional[str] = None,
+    ) -> TrelloSearchResult:
         params = {"query": query, "cards_limit": limit, "boards_limit": limit}
         if model_types:
             params["modelTypes"] = model_types
+        if id_boards:
+            params["idBoards"] = id_boards
         data = await self._authenticated_request("GET", "/1/search", params=params)
         boards = [TrelloBoard(**b) for b in data.get("boards", [])]
         cards = [TrelloCard(**c) for c in data.get("cards", [])]

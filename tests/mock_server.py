@@ -389,6 +389,11 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
             return
         boards_limit = int(params.get('boards_limit', [10])[0])
         cards_limit = int(params.get('cards_limit', [10])[0])
+        id_boards_raw = params.get('idBoards', [None])[0]
+        board_filter = (
+            {b.strip() for b in id_boards_raw.split(",") if b.strip()}
+            if id_boards_raw else None
+        )
         query_lower = query.lower()
         matching_boards = [
             b for b in mock_data.boards.values()
@@ -396,7 +401,8 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         ][:boards_limit]
         matching_cards = [
             c for c in mock_data.cards.values()
-            if query_lower in c["name"].lower() or query_lower in c.get("desc", "").lower()
+            if (query_lower in c["name"].lower() or query_lower in c.get("desc", "").lower())
+            and (board_filter is None or c.get("idBoard") in board_filter)
         ][:cards_limit]
         self._send_json({"boards": matching_boards, "cards": matching_cards})
 

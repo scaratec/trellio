@@ -52,7 +52,31 @@ def step_add_check_item(context, name):
 @when('I update the check item state to "{state}"')
 def step_update_check_item_state(context, state):
     context.updated_check_item = run_async(
-        context.client.update_check_item(context.existing_card.id, context.existing_check_item.id, state)
+        context.client.update_check_item(
+            context.existing_card.id, context.existing_check_item.id, state=state)
+    )
+
+
+@when('I update the check item name to "{name}"')
+def step_update_check_item_name(context, name):
+    context.updated_check_item = run_async(
+        context.client.update_check_item(
+            context.existing_card.id, context.existing_check_item.id, name=name)
+    )
+
+
+@when('I update the check item position to "{pos}"')
+def step_update_check_item_pos(context, pos):
+    context.updated_check_item = run_async(
+        context.client.update_check_item(
+            context.existing_card.id, context.existing_check_item.id, pos=pos)
+    )
+
+
+@when('I add a check item with name "{name}" and position "{pos}"')
+def step_add_check_item_with_pos(context, name, pos):
+    context.last_check_item = run_async(
+        context.client.create_check_item(context.existing_checklist.id, name, pos=pos)
     )
 
 
@@ -141,6 +165,16 @@ def step_assert_check_item_state(context, state):
 @then('the check item state should now be "{state}"')
 def step_assert_updated_check_item_state(context, state):
     assert context.updated_check_item.state == state
+
+
+@then('the check item name should now be "{name}"')
+def step_assert_updated_check_item_name(context, name):
+    assert context.updated_check_item.name == name
+
+
+@then('the check item should still have name "{name}"')
+def step_assert_updated_check_item_still_named(context, name):
+    assert context.updated_check_item.name == name
 
 
 @then('retrieving the checklist should include check item "{name}"')

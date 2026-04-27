@@ -15,6 +15,15 @@ def step_create_existing_card(context, list_name, card_name):
     context.existing_card = run_async(context.client.create_card(context.existing_list.id, card_name))
 
 
+@given('a card with description "{desc}" exists in "{list_name}" named "{card_name}"')
+def step_create_existing_card_with_desc(context, list_name, card_name, desc):
+    if not hasattr(context, 'existing_list') or context.existing_list.name != list_name:
+        context.existing_list = run_async(context.client.create_list(context.existing_board.id, list_name))
+    context.existing_card = run_async(
+        context.client.create_card(context.existing_list.id, card_name, desc=desc)
+    )
+
+
 @when('I create a new card with name "{card_name}" in the "{list_name}" list')
 def step_create_card(context, card_name, list_name):
     assert context.existing_list.name == list_name
