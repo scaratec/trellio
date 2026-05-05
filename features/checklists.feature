@@ -114,3 +114,43 @@ Feature: Trello Checklists Management
   Scenario: Fail to delete a non-existent checklist
     When I delete a checklist with ID "nonexistent_checklist_123"
     Then the request should fail with a 404 error
+
+  Scenario Outline: List check items of a checklist
+    Given a checklist exists on the card with name "Items Checklist"
+    And a check item exists in the checklist with name "<item_1>"
+    And a check item exists in the checklist with name "<item_2>"
+    When I list the check items of the checklist
+    Then I should see exactly 2 check items
+    And one of the check items should have name "<item_1>"
+    And one of the check items should have name "<item_2>"
+    And every check item should have a numeric pos
+
+    Examples:
+      | item_1         | item_2       |
+      | Write tests    | Update docs  |
+      | Deploy staging | Smoke test   |
+
+  Scenario: List check items preserves explicit position
+    Given a checklist exists on the card with name "Position Checklist"
+    And a check item "First" exists in the checklist at position "top"
+    And a check item "Second" exists in the checklist at position "bottom"
+    When I list the check items of the checklist
+    Then I should see exactly 2 check items
+    And check item "First" should have a lower pos than "Second"
+
+  Scenario: List check items returns empty list for checklist without items
+    Given a checklist exists on the card with name "Empty Checklist"
+    When I list the check items of the checklist
+    Then I should see exactly 0 check items
+
+  Scenario: List check items includes state
+    Given a checklist exists on the card with name "State Checklist"
+    And a check item exists in the checklist with name "Done Item"
+    And the check item state is updated to "complete"
+    When I list the check items of the checklist
+    Then I should see exactly 1 check items
+    And check item "Done Item" should have state "complete"
+
+  Scenario: Fail to list check items for a non-existent checklist
+    When I list check items for checklist ID "nonexistent_checklist_456"
+    Then the request should fail with a 404 error

@@ -358,6 +358,16 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
     def _handle_get_checklist(self, path):
         parts = path.split("/")
         checklist_id = parts[3]
+        if len(parts) == 5 and parts[4] == "checkItems":
+            if checklist_id not in mock_data.checklists:
+                self._send_not_found()
+                return
+            items = [
+                ci for ci in mock_data.check_items.values()
+                if ci["idChecklist"] == checklist_id
+            ]
+            self._send_json(items)
+            return
         if checklist_id in mock_data.checklists:
             checklist = dict(mock_data.checklists[checklist_id])
             checklist["checkItems"] = [
@@ -578,11 +588,25 @@ class TrelloMockHandler(http.server.SimpleHTTPRequestHandler):
         if not name:
             self._send_bad_request("name")
             return
+        pos = post_data.get('pos') or params.get('pos', [None])[0]
+        existing_items = [
+            ci for ci in mock_data.check_items.values()
+            if ci["idChecklist"] == checklist_id
+        ]
+        if pos is None:
+            pos = (max((ci["pos"] for ci in existing_items), default=0) + 1024)
+        elif pos == "top":
+            pos = (min((ci["pos"] for ci in existing_items), default=1024) / 2)
+        elif pos == "bottom":
+            pos = (max((ci["pos"] for ci in existing_items), default=0) + 1024)
+        else:
+            pos = float(pos)
         new_id = str(uuid.uuid4())
         new_check_item = {
             "id": new_id,
             "name": name,
             "state": "incomplete",
+            "pos": pos,
             "idChecklist": checklist_id,
         }
         mock_data.check_items[new_id] = new_check_item

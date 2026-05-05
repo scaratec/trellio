@@ -33,6 +33,7 @@ class TrelloCheckItem(BaseModel):
     id: str
     name: str
     state: str = "incomplete"
+    pos: Optional[float | int | str] = None
 
 
 class TrelloChecklist(BaseModel):

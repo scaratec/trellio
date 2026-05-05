@@ -204,6 +204,10 @@ class TrellioClient:
     async def delete_checklist(self, checklist_id: str):
         await self._authenticated_request("DELETE", f"/1/checklists/{checklist_id}")
 
+    async def list_check_items(self, checklist_id: str) -> List[TrelloCheckItem]:
+        data = await self._authenticated_request("GET", f"/1/checklists/{checklist_id}/checkItems")
+        return [TrelloCheckItem(**item) for item in data]
+
     async def create_check_item(
         self, checklist_id: str, name: str,
         pos: Optional[Union[str, float]] = None,

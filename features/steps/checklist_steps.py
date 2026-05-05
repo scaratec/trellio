@@ -189,3 +189,72 @@ def step_verify_check_item_not_in_checklist(context, name):
     checklist = run_async(context.client.get_checklist(context.existing_checklist.id))
     item_names = [ci.name for ci in checklist.check_items]
     assert name not in item_names
+
+
+@given('a check item "{name}" exists in the checklist at position "{pos}"')
+def step_create_check_item_with_pos(context, name, pos):
+    context.existing_check_item = run_async(
+        context.client.create_check_item(context.existing_checklist.id, name, pos=pos))
+
+
+@given('the check item state is updated to "{state}"')
+def step_update_existing_check_item_state(context, state):
+    context.existing_check_item = run_async(
+        context.client.update_check_item(
+            context.existing_card.id, context.existing_check_item.id, state=state)
+    )
+
+
+@when('I list the check items of the checklist')
+def step_list_check_items(context):
+    context.check_items_result = run_async(
+        context.client.list_check_items(context.existing_checklist.id))
+
+
+@when('I list check items for checklist ID "{checklist_id}"')
+def step_list_check_items_by_id(context, checklist_id):
+    capture_api_error(context, context.client.list_check_items(checklist_id))
+
+
+@then('I should see exactly {count:d} check items')
+def step_assert_check_item_count(context, count):
+    assert len(context.check_items_result) == count, (
+        f"Expected {count}, got {len(context.check_items_result)}"
+    )
+
+
+@then('one of the check items should have name "{name}"')
+def step_assert_check_item_in_result(context, name):
+    names = [ci.name for ci in context.check_items_result]
+    assert name in names, f"'{name}' not in {names}"
+
+
+@then('every check item should have a numeric pos')
+def step_assert_all_items_have_pos(context):
+    for ci in context.check_items_result:
+        assert ci.pos is not None, f"Check item '{ci.name}' has no pos"
+        assert isinstance(ci.pos, (int, float)), (
+            f"Check item '{ci.name}' pos is {type(ci.pos)}, expected numeric"
+        )
+
+
+@then('check item "{name_a}" should have a lower pos than "{name_b}"')
+def step_assert_pos_order(context, name_a, name_b):
+    pos_map = {ci.name: ci.pos for ci in context.check_items_result}
+    assert name_a in pos_map, f"'{name_a}' not found in results"
+    assert name_b in pos_map, f"'{name_b}' not found in results"
+    assert pos_map[name_a] < pos_map[name_b], (
+        f"Expected pos({name_a})={pos_map[name_a]} < pos({name_b})={pos_map[name_b]}"
+    )
+
+
+@then('check item "{name}" should have state "{state}"')
+def step_assert_check_item_with_state(context, name, state):
+    for ci in context.check_items_result:
+        if ci.name == name:
+            assert ci.state == state, (
+                f"Expected state '{state}' for '{name}', got '{ci.state}'"
+            )
+            return
+    names = [ci.name for ci in context.check_items_result]
+    assert False, f"'{name}' not in {names}"
