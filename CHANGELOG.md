@@ -8,6 +8,24 @@ The format is based on
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-05-05
+
+### Added
+- `list_check_items(checklist_id)` method on `TrellioClient`,
+  mapping to `GET /1/checklists/{id}/checkItems`. Returns
+  `List[TrelloCheckItem]` with `id`, `name`, `state`, `pos`
+  per item. Enables reading existing check item IDs, which
+  is required for `update_check_item` and `delete_check_item`
+  after session boundaries.
+- `pos` field (`Optional[float | int | str]`) on
+  `TrelloCheckItem` model, matching the Trello API response
+- Mock server route for the `/checkItems` endpoint, including
+  `pos` persistence with top/bottom/numeric support
+- 5 BDD scenarios covering happy path (with varianz), empty
+  list, state round-trip, position ordering, and 404 error
+
+[1.8.0]: https://github.com/scaratec/trellio/compare/v1.7.0...v1.8.0
+
 ## [1.2.1] - 2026-04-14
 
 ### Fixed
